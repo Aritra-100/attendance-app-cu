@@ -1,0 +1,186 @@
+/* ===============================
+   Page base
+================================ */
+.attendance-page {
+  font-size: 16px;
+  color: #111827;
+}
+
+/* ===============================
+   Titles 
+================================ */
+.attendance-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.attendance-subtitle {
+  font-size: 17px;
+  color: #6b7280;
+}
+
+/* ===============================
+   Cards 
+================================ */
+.attendance-card {
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.attendance-card .card-body {
+  height: 100%;
+}
+
+/* ===============================
+   Batch summary
+================================ */
+.batch-summary-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.batch-summary .stats-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.batch-summary .stats-value {
+  font-size: 40px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.summary-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ===============================
+   Progress bar
+================================ */
+.summary-right {
+  width: 220px;
+  display: flex;
+  align-items: center;
+}
+
+.attendance-page .progress {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.attendance-page .progress-bar {
+  height: 100%;
+  background: #7c3aed;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ===============================
+   Student list
+================================ */
+.attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attendance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.student-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+/* Right side */
+.student-metrics {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.student-percent {
+  font-weight: 600;
+  color: #374151;
+}
+
+/* ===============================
+   Status pills
+================================ */
+.status-pill {
+  min-width: 90px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.status-pill.present {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.status-pill.absent {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ===============================
+   Calendar 
+================================ */
+.attendance-page .rdp {
+  --rdp-accent-color: #7c3aed;
+  --rdp-background-color: #ede9fe;
+  --rdp-accent-color-dark: #6d28d9;
+}
+
+.attendance-page .rdp-day_selected {
+  background-color: #7c3aed !important;
+  color: #ffffff;
+  border-radius: 10px;
+}
+
+.attendance-page .rdp-day_today {
+  font-weight: 600;
+}
+
+.attendance-page .rdp-caption {
+  font-weight: 600;
+}
+
+.attendance-page .rdp-nav_button {
+  border-radius: 8px;
+}
+
+/* Remove browser blue focus styles */
+.attendance-page .rdp-day:focus,
+.attendance-page .rdp-day:focus-visible,
+.attendance-page .rdp-nav_button:focus,
+.attendance-page .rdp-nav_button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Ensure nav arrows stay purple */
+.attendance-page .rdp-nav_button svg {
+  stroke: #7c3aed;
+  fill: #7c3aed;
+}
