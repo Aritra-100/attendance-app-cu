@@ -1,7 +1,251 @@
-import React from "react";
+import { useContext, useState, useMemo, useEffect } from "react";
+import BatchContext from "../../context/batch/BatchContext";
+import StudentModal from "../../components/studentModal/StudentModal";
+import StudentDetailsModal from "../../components/studentDetailsModal/StudentDetailsModal";
+import FaceRegisterModal from "../../components/faceRegisterModal/FaceRegisterModal";
+import "./Students.css";
 
 const Students = () => {
-  return <div>Students</div>;
+  const { activeBatch } = useContext(BatchContext);
+
+  // 🔹 Mock students data
+  const [students, setStudents] = useState([
+    {
+      id: 1,
+      name: "Alex Johnson",
+      roll: "20CS101",
+      attendance: 0,
+      faceRegistered: false,
+    },
+    {
+      id: 2,
+      name: "Student 2",
+      roll: "20CS102",
+      attendance: 0,
+      faceRegistered: true,
+    },
+    {
+      id: 3,
+      name: "Student 3",
+      roll: "20CS103",
+      attendance: 0,
+      faceRegistered: true,
+    },
+    {
+      id: 4,
+      name: "Student 4",
+      roll: "20CS104",
+      attendance: 0,
+      faceRegistered: true,
+    },
+    {
+      id: 5,
+      name: "Student 5",
+      roll: "20CS105",
+      attendance: 0,
+      faceRegistered: false,
+    },
+  ]);
+
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const [showDetails, setShowDetails] = useState(false);
+  const [showFaceRegister, setShowFaceRegister] = useState(false);
+
+  const handleAddStudent = (student) => {
+    setStudents((prev) => [...prev, student]);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // If click is NOT inside any student actions menu
+      if (!e.target.closest(".actions")) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // ✅ useMemo ALWAYS runs (safe)
+  const stats = useMemo(() => {
+    const total = students.length;
+    const registered = students.filter((s) => s.faceRegistered).length;
+    const completion = total === 0 ? 0 : Math.round((registered / total) * 100);
+
+    return { total, registered, completion };
+  }, [students]);
+
+  // ✅ conditional return AFTER hooks
+  if (!activeBatch) return null;
+
+  const handleDeleteStudent = (id) => {
+    setStudents((prev) => prev.filter((s) => s.id !== id));
+    setOpenMenuId(null);
+  };
+
+  return (
+    <div className="container-fluid students-page">
+      {/* PAGE HEADER */}
+      <div className="mb-4">
+        <h2 className="students-title">Students</h2>
+        <p className="students-subtitle">
+          Manage students for {activeBatch.name}
+        </p>
+      </div>
+
+      {/* FACE REGISTRATION STATUS CARD */}
+      <div className="card students-card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Face Registration Status</h5>
+          <p className="text-muted mb-4">
+            An overview of face registration completion for this batch.
+          </p>
+
+          <div className="row text-center">
+            <div className="col">
+              <h3>{stats.total}</h3>
+              <p className="text-muted">Total Students</p>
+            </div>
+
+            <div className="col">
+              <h3>{stats.registered}</h3>
+              <p className="text-muted">Faces Registered</p>
+            </div>
+
+            <div className="col">
+              <h3>{stats.completion}%</h3>
+              <p className="text-muted">Completion</p>
+            </div>
+          </div>
+
+          <button className="btn btn-outline-secondary mt-3">
+            <i className="fa-solid fa-rotate"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* STUDENT ROSTER CARD */}
+      <div className="card students-card">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 className="card-title mb-1">
+                Student Roster for {activeBatch.name}
+              </h5>
+              <p className="students-subtitle mb-0">
+                Manage your class roster. Add, edit, or view student details.
+              </p>
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsStudentModalOpen(true)}
+            >
+              <i className="fa-solid fa-user-plus"></i> Add Students
+            </button>
+          </div>
+
+          <div className="students-table">
+            <div className="students-table-header">
+              <span>Student</span>
+              <span>Roll No.</span>
+              <span>Attendance</span>
+              <span>Face Status</span>
+              <span></span>
+            </div>
+
+            {students.map((s) => (
+              <div key={s.id} className="students-table-row">
+                <div className="student-info">
+                  <img src={s.avatar} alt={s.name} />
+                  <span>{s.name}</span>
+                </div>
+
+                <span>{s.roll}</span>
+
+                <span className="attendance-percent">{s.attendance}%</span>
+
+                <span
+                  className={`face-status ${
+                    s.faceRegistered ? "ok" : "missing"
+                  }`}
+                >
+                  {s.faceRegistered ? (
+                    <i className="fa-solid fa-circle-check"></i>
+                  ) : (
+                    <i className="fa-solid fa-circle-xmark"></i>
+                  )}
+                </span>
+
+                <span className="actions" onClick={(e) => e.stopPropagation()}>
+                  <i
+                    className="fa-solid fa-ellipsis-vertical"
+                    onClick={() =>
+                      setOpenMenuId(openMenuId === s.id ? null : s.id)
+                    }
+                  ></i>
+                  
+                  {openMenuId === s.id && (
+                    <div className="student-dropdown">
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(s);
+                          setShowDetails(true);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <i className="fa-solid fa-eye"></i> View Details
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(s);
+                          setShowFaceRegister(true);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <i className="fa-solid fa-camera"></i> Register Face
+                      </button>
+
+                      <button
+                        className="danger"
+                        onClick={() => handleDeleteStudent(s.id)}
+                      >
+                        <i className="fa-solid fa-trash"></i> Delete
+                      </button>
+                    </div>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <StudentModal
+        isOpen={isStudentModalOpen}
+        onClose={() => setIsStudentModalOpen(false)}
+        onSubmit={handleAddStudent}
+      />
+      <StudentDetailsModal
+        isOpen={showDetails}
+        student={selectedStudent}
+        onClose={() => setShowDetails(false)}
+      />
+
+      <FaceRegisterModal
+        isOpen={showFaceRegister}
+        student={selectedStudent}
+        onClose={() => setShowFaceRegister(false)}
+      />
+    </div>
+  );
 };
 
 export default Students;

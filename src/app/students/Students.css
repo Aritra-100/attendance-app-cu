@@ -1,0 +1,119 @@
+.students-page {
+  font-size: 16px;
+  color: #111827;
+}
+
+.students-title {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.students-subtitle {
+  font-size: 15px;
+  color: #6b7280;
+}
+
+.students-card {
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Table ===== */
+.students-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.students-table-header,
+.students-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 40px;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.students-table-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.students-table-row {
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.student-info img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+/* ===== Attendance ===== */
+.attendance-percent {
+  font-weight: 500;
+}
+
+/* ===== Face status ===== */
+.face-status {
+  font-size: 18px;
+}
+
+.face-status.ok {
+  color: #22c55e;
+}
+
+.face-status.missing {
+  color: #ef4444;
+}
+
+/* ===== Actions ===== */
+.actions {
+  position: relative;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.actions:hover {
+  color: #111827;
+}
+
+.student-dropdown {
+  position: absolute;
+  right: 0;
+  top: 22px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.student-dropdown button {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.student-dropdown button:hover {
+  background: #f3f4f6;
+}
+
+.student-dropdown .danger {
+  color: #dc2626;
+}

@@ -1,0 +1,176 @@
+/* Reuse backdrop behavior */
+@import "../batchModal/BatchModal.css";
+
+/* Override container */
+.student-modal {
+  background: #ffffff;
+  border-radius: 14px;
+  width: 520px;
+  max-width: 92%;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Header */
+.student-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.student-modal-header h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.student-modal-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.close-btn:hover {
+  color: #111827;
+}
+
+/* Body */
+.student-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.student-modal-body label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.student-modal-body input {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.student-modal-body input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+/* Footer */
+.student-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.cancel-text {
+  background: #f3f4f6;
+  border: none;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.cancel-text:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.cancel-text:active {
+  background: #d1d5db;
+}
+
+/* ===============================
+   Animations
+================================ */
+
+/* Backdrop fade */
+.modal-backdrop {
+  animation: backdrop-fade-in 0.2s ease-out;
+}
+
+.modal-backdrop.closing {
+  animation: backdrop-fade-out 0.18s ease-in forwards;
+}
+
+/* Modal entrance */
+.student-modal {
+  animation: modal-in 0.22s ease-out;
+}
+
+.student-modal.closing {
+  animation: modal-out 0.18s ease-in forwards;
+}
+
+/* ===== Keyframes ===== */
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes backdrop-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ===============================
+   Reduced motion support
+================================ */
+@media (prefers-reduced-motion: reduce) {
+  .student-modal,
+  .modal-backdrop {
+    animation: none !important;
+  }
+}
