@@ -1,0 +1,176 @@
+.reports-page {
+  font-size: 16px;
+  color: #111827;
+}
+
+/* Titles */
+.reports-title {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.reports-subtitle {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+/* Cards */
+.reports-card {
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Bar Chart ===== */
+.bar-chart.improved {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  height: 260px;
+  padding: 0 20px;
+  border-bottom: 1px dashed #e5e7eb;
+}
+
+.bar-item {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.bar-wrapper {
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(to top, #f3f4f6 0%, #fafafa 100%);
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  border-radius: 10px;
+  position: relative;
+  transition: height 0.4s ease;
+}
+
+/* Low attendance bars */
+.bar-fill.low {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+}
+
+.bar-tooltip {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: white;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bar-fill:hover .bar-tooltip {
+  opacity: 1;
+}
+
+.bar-label {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* ===== Graph Header ===== */
+.reports-graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.graph-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-btn {
+  border: none;
+  background: #f3f4f6;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #e5e7eb;
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.week-label {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 160px;
+  text-align: center;
+}
+
+.week-select {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+/* ===== Empty Graph ===== */
+.empty-graph {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.empty-graph i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+/* ===== Absence List ===== */
+.absence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.absence-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  background: #f9fafb;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.rank {
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.count {
+  font-size: 14px;
+  color: #dc2626;
+  font-weight: 500;
+}

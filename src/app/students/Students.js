@@ -1,5 +1,7 @@
 import { useContext, useState, useMemo, useEffect } from "react";
 import BatchContext from "../../context/batch/BatchContext";
+import AlertContext from "../../context/alert/AlertContext";
+
 import StudentModal from "../../components/studentModal/StudentModal";
 import StudentDetailsModal from "../../components/studentDetailsModal/StudentDetailsModal";
 import FaceRegisterModal from "../../components/faceRegisterModal/FaceRegisterModal";
@@ -7,6 +9,7 @@ import "./Students.css";
 
 const Students = () => {
   const { activeBatch } = useContext(BatchContext);
+  const { showAlert } = useContext(AlertContext);
 
   // 🔹 Mock students data
   const [students, setStudents] = useState([
@@ -56,7 +59,11 @@ const Students = () => {
 
   const handleAddStudent = (student) => {
     setStudents((prev) => [...prev, student]);
+
+    showAlert("Added", "New student was added", "success");
   };
+
+  const isEmpty = students.length === 0;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -88,6 +95,12 @@ const Students = () => {
   const handleDeleteStudent = (id) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
     setOpenMenuId(null);
+
+    showAlert("Deleted", "Student was deleted", "danger");
+  };
+
+  const handleRefresh = () => {
+    showAlert("Refreshed", "Face regestration data refreshed", "primary");
   };
 
   return (
@@ -104,30 +117,44 @@ const Students = () => {
       <div className="card students-card mb-4">
         <div className="card-body">
           <h5 className="card-title">Face Registration Status</h5>
-          <p className="text-muted mb-4">
-            An overview of face registration completion for this batch.
-          </p>
 
-          <div className="row text-center">
-            <div className="col">
-              <h3>{stats.total}</h3>
-              <p className="text-muted">Total Students</p>
+          {isEmpty ? (
+            <div className="empty-card-state">
+              <i className="fa-solid fa-users"></i>
+              <p>No students added yet</p>
+              <small>Add students to enable face registration</small>
             </div>
+          ) : (
+            <>
+              <p className="text-muted mb-4">
+                An overview of face registration completion for this batch.
+              </p>
 
-            <div className="col">
-              <h3>{stats.registered}</h3>
-              <p className="text-muted">Faces Registered</p>
-            </div>
+              <div className="row text-center">
+                <div className="col">
+                  <h3>{stats.total}</h3>
+                  <p className="text-muted">Total Students</p>
+                </div>
 
-            <div className="col">
-              <h3>{stats.completion}%</h3>
-              <p className="text-muted">Completion</p>
-            </div>
-          </div>
+                <div className="col">
+                  <h3>{stats.registered}</h3>
+                  <p className="text-muted">Faces Registered</p>
+                </div>
 
-          <button className="btn btn-outline-secondary mt-3">
-            <i className="fa-solid fa-rotate"></i> Refresh
-          </button>
+                <div className="col">
+                  <h3>{stats.completion}%</h3>
+                  <p className="text-muted">Completion</p>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-outline-secondary mt-3"
+                onClick={handleRefresh}
+              >
+                <i className="fa-solid fa-rotate"></i> Refresh
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -152,80 +179,93 @@ const Students = () => {
             </button>
           </div>
 
-          <div className="students-table">
-            <div className="students-table-header">
-              <span>Student</span>
-              <span>Roll No.</span>
-              <span>Attendance</span>
-              <span>Face Status</span>
-              <span></span>
+          {isEmpty ? (
+            <div className="empty-table-state">
+              <i className="fa-solid fa-user-plus"></i>
+              <p>No students in this batch</p>
+              <small>
+                Click <strong>Add Students</strong> to start managing attendance
+              </small>
             </div>
-
-            {students.map((s) => (
-              <div key={s.id} className="students-table-row">
-                <div className="student-info">
-                  <img src={s.avatar} alt={s.name} />
-                  <span>{s.name}</span>
-                </div>
-
-                <span>{s.roll}</span>
-
-                <span className="attendance-percent">{s.attendance}%</span>
-
-                <span
-                  className={`face-status ${
-                    s.faceRegistered ? "ok" : "missing"
-                  }`}
-                >
-                  {s.faceRegistered ? (
-                    <i className="fa-solid fa-circle-check"></i>
-                  ) : (
-                    <i className="fa-solid fa-circle-xmark"></i>
-                  )}
-                </span>
-
-                <span className="actions" onClick={(e) => e.stopPropagation()}>
-                  <i
-                    className="fa-solid fa-ellipsis-vertical"
-                    onClick={() =>
-                      setOpenMenuId(openMenuId === s.id ? null : s.id)
-                    }
-                  ></i>
-                  
-                  {openMenuId === s.id && (
-                    <div className="student-dropdown">
-                      <button
-                        onClick={() => {
-                          setSelectedStudent(s);
-                          setShowDetails(true);
-                          setOpenMenuId(null);
-                        }}
-                      >
-                        <i className="fa-solid fa-eye"></i> View Details
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedStudent(s);
-                          setShowFaceRegister(true);
-                          setOpenMenuId(null);
-                        }}
-                      >
-                        <i className="fa-solid fa-camera"></i> Register Face
-                      </button>
-
-                      <button
-                        className="danger"
-                        onClick={() => handleDeleteStudent(s.id)}
-                      >
-                        <i className="fa-solid fa-trash"></i> Delete
-                      </button>
-                    </div>
-                  )}
-                </span>
+          ) : (
+            <div className="students-table">
+              <div className="students-table-header">
+                <span>Student</span>
+                <span>Roll No.</span>
+                <span>Attendance</span>
+                <span>Face Status</span>
+                <span></span>
               </div>
-            ))}
-          </div>
+
+              {students.map((s) => (
+                <div key={s.id} className="students-table-row">
+                  <div className="student-info">
+                    <img src={s.avatar} alt={s.name} />
+                    <span>{s.name}</span>
+                  </div>
+
+                  <span>{s.roll}</span>
+
+                  <span className="attendance-percent">{s.attendance}%</span>
+
+                  <span
+                    className={`face-status ${
+                      s.faceRegistered ? "ok" : "missing"
+                    }`}
+                  >
+                    {s.faceRegistered ? (
+                      <i className="fa-solid fa-circle-check"></i>
+                    ) : (
+                      <i className="fa-solid fa-circle-xmark"></i>
+                    )}
+                  </span>
+
+                  <span
+                    className="actions"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <i
+                      className="fa-solid fa-ellipsis-vertical"
+                      onClick={() =>
+                        setOpenMenuId(openMenuId === s.id ? null : s.id)
+                      }
+                    ></i>
+
+                    {openMenuId === s.id && (
+                      <div className="student-dropdown">
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(s);
+                            setShowDetails(true);
+                            setOpenMenuId(null);
+                          }}
+                        >
+                          <i className="fa-solid fa-eye"></i> View Details
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(s);
+                            setShowFaceRegister(true);
+                            setOpenMenuId(null);
+                          }}
+                        >
+                          <i className="fa-solid fa-camera"></i> Register Face
+                        </button>
+
+                        <button
+                          className="danger"
+                          onClick={() => handleDeleteStudent(s.id)}
+                        >
+                          <i className="fa-solid fa-trash"></i> Delete
+                        </button>
+                      </div>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <StudentModal

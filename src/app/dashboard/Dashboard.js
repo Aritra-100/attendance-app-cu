@@ -27,7 +27,7 @@ const Dashboard = () => {
 
   const copyCode = () => {
     navigator.clipboard.writeText(code);
-    showAlert("Copied successfully", "success");
+    showAlert("Copied", "Copied successfully", "success");
   };
 
   const batchName = activeBatch ? activeBatch.name : "";
@@ -154,7 +154,7 @@ const Dashboard = () => {
                   disabled={threshold === savedThreshold}
                   onClick={() => {
                     setSavedThreshold(threshold);
-                    showAlert("Saved successfully", "success");
+                    showAlert("Saved", "Saved successfully", "success");
                   }}
                 >
                   Save
