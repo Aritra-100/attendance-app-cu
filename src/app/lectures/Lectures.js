@@ -314,7 +314,7 @@ const Lectures = () => {
                             <label>Learning Objectives</label>
                             <textarea
                               value={topic.objectives}
-                              placeholder="Enter objective name"
+                              placeholder="Enter objective"
                               onChange={(e) =>
                                 updateTopic(
                                   wIndex,
