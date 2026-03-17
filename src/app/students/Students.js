@@ -80,7 +80,7 @@ const Students = () => {
     };
   }, []);
 
-  // ✅ useMemo ALWAYS runs (safe)
+  // useMemo ALWAYS runs (safe)
   const stats = useMemo(() => {
     const total = students.length;
     const registered = students.filter((s) => s.faceRegistered).length;
@@ -89,7 +89,7 @@ const Students = () => {
     return { total, registered, completion };
   }, [students]);
 
-  // ✅ conditional return AFTER hooks
+  // conditional return AFTER hooks
   if (!activeBatch) return null;
 
   const handleDeleteStudent = (id) => {

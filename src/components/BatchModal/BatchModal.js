@@ -45,7 +45,9 @@ const BatchModal = ({ isOpen, onClose, mode, batch, onSubmit }) => {
           <button
             className={`primary ${mode === "delete" ? "danger" : ""}`}
             disabled={mode !== "delete" && !name.trim()}
-            onClick={() => onSubmit(mode === "delete" ? batch.id : name.trim())}
+            onClick={() =>
+              onSubmit(mode === "delete" ? batch.id : name.trim(), batch?.id)
+            }
           >
             {mode === "add" && "Add"}
             {mode === "rename" && "Save"}
@@ -54,7 +56,7 @@ const BatchModal = ({ isOpen, onClose, mode, batch, onSubmit }) => {
         </div>
       </div>
     </div>,
-    modalRoot
+    modalRoot,
   );
 };
 

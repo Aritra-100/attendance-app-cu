@@ -1,14 +1,18 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
 import BatchContext from "../../../context/batch/BatchContext";
+import AlertContext from "../../../context/alert/AlertContext";
 
 import "./Sidebar.css";
 import BatchModal from "../../../components/batchModal/BatchModal";
 
 const Sidebar = ({ isOpen }) => {
+  const backendUrl = "http://localhost:5000/";
   const { batchId } = useParams();
   const navigate = useNavigate();
+
   const { setActiveBatch } = useContext(BatchContext);
+  const { showAlert } = useContext(AlertContext);
 
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -17,11 +21,7 @@ const Sidebar = ({ isOpen }) => {
   const [modalMode, setModalMode] = useState(null); // "add" | "rename"
   const [selectedBatch, setSelectedBatch] = useState(null);
 
-  // Sample batches
-  const [batches, setBatches] = useState([
-    { id: "cs101", name: "CS101 - Intro to Programming" },
-    { id: "cs202", name: "CS202 - Data Structures" },
-  ]);
+  const [batches, setBatches] = useState([]);
 
   // close menu on outside click
   useEffect(() => {
@@ -36,37 +36,73 @@ const Sidebar = ({ isOpen }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ADD batch
-  const handleAddBatch = (name) => {
-    const newBatch = {
-      id: Date.now().toString(),
-      name,
-    };
+  // Add batch
+  const handleAddBatch = async (name) => {
+    try {
+      const res = await fetch(`${backendUrl}api/batches`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
 
-    setBatches((prev) => [...prev, newBatch]);
-    setIsModalOpen(false);
+      const newBatch = await res.json();
+
+      setBatches((prev) => [...prev, newBatch]);
+      setIsModalOpen(false);
+      showAlert("Added", "New batch added successfully", "success");
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  // RENAME batch
-  const handleRenameBatch = (name) => {
-    setBatches((prev) =>
-      prev.map((b) => (b.id === selectedBatch.id ? { ...b, name } : b))
-    );
-    setIsModalOpen(false);
+  // Rename batch
+  const handleRenameBatch = async (name,id) => {
+    try {
+      await fetch(`${backendUrl}api/batches/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      // update frontend state
+      setBatches((prev) =>
+        prev.map((b) => (b.id === selectedBatch.id ? { ...b, name } : b)),
+      );
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Rename failed", err);
+    }
   };
 
   // Delete batch
-  const handleDeleteBatch = (id) => {
-    setBatches((prev) => prev.filter((b) => b.id !== id));
-    setIsModalOpen(false);
+  const handleDeleteBatch = async (id) => {
+    try {
+      await fetch(`${backendUrl}api/batches/${id}`, {
+        method: "DELETE",
+      });
 
-    // If deleted batch was active → redirect safely
-    if (id === batchId) {
-      navigate("/");
+      setIsModalOpen(false);
+
+      if (id === batchId) {
+        navigate("/");
+      }
+      showAlert("Deleted", "Batch deleted successfully", "danger");
+    } catch (error) {
+      console.error(error);
     }
   };
 
   useEffect(() => {
+    fetch(`${backendUrl}api/batches`)
+      .then((res) => res.json())
+      .then((data) => setBatches(data))
+      .catch((err) => console.error(err));
+
     const found = batches.find((b) => b.id === batchId);
     if (found) {
       setActiveBatch(found);
@@ -162,8 +198,8 @@ const Sidebar = ({ isOpen }) => {
           modalMode === "add"
             ? handleAddBatch
             : modalMode === "rename"
-            ? handleRenameBatch
-            : handleDeleteBatch
+              ? handleRenameBatch
+              : handleDeleteBatch
         }
       />
     </aside>

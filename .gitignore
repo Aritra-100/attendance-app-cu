@@ -4,6 +4,10 @@
 /node_modules
 /.pnp
 .pnp.js
+/attendance-app-cu backend/node_modules
+
+# env files
+/attendance-app-cu backend/.env
 
 # testing
 /coverage

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
 
 import AppLogo from "./assets/Logo.png";
@@ -33,7 +33,7 @@ const Navbar = (props) => {
           <span className="brand-text">Smart Attendance</span>
         </NavLink>
 
-        {/* ✅ Compact toggle button */}
+        {/* Compact toggle button */}
         <button
           className="sidebar-toggle"
           onClick={toggleSidebar}
