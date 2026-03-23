@@ -1,53 +1,75 @@
+import { useState, useEffect } from "react";
 import "./LectureModal.css";
 
-const LectureTopicsModal = ({ data, setData, onClose }) => {
+const LectureTopicsModal = ({ data, setData, onCancel, onSave }) => {
+  const [localData, setLocalData] = useState([]);
+
+  // Copy data into local state when modal opens
+  useEffect(() => {
+    setLocalData(JSON.parse(JSON.stringify(data)));
+  }, [data]);
+
   const addUnit = () => {
-    setData([
-      ...data,
+    setLocalData([
+      ...localData,
       {
         id: Date.now(),
         name: "New Unit",
-        topics: ["New Topic"],
+        topics: [{ id: Date.now(), name: "New Topic" }],
       },
     ]);
   };
 
   const updateUnitName = (unitIndex, value) => {
-    const updated = [...data];
+    const updated = [...localData];
     updated[unitIndex].name = value;
-    setData(updated);
+    setLocalData(updated);
   };
 
   const removeUnit = (unitIndex) => {
-    if (data.length === 1) return;
-    setData(data.filter((_, i) => i !== unitIndex));
+    const updated = [...localData];
+    updated.splice(unitIndex, 1);
+    setLocalData(updated);
   };
 
   const addTopic = (unitIndex) => {
-    const updated = [...data];
-    updated[unitIndex].topics.push("New Topic");
-    setData(updated);
+    const updated = [...localData];
+    updated[unitIndex].topics.push({
+      id: Date.now(),
+      name: "New Topic",
+    });
+    setLocalData(updated);
   };
 
   const updateTopic = (unitIndex, topicIndex, value) => {
-    const updated = [...data];
-    updated[unitIndex].topics[topicIndex] = value;
-    setData(updated);
+    const updated = [...localData];
+    updated[unitIndex].topics[topicIndex].name = value;
+    setLocalData(updated);
   };
 
   const removeTopic = (unitIndex, topicIndex) => {
-    const updated = [...data];
-    if (updated[unitIndex].topics.length === 1) return;
+    const updated = [...localData];
     updated[unitIndex].topics.splice(topicIndex, 1);
-    setData(updated);
+    setLocalData(updated);
+  };
+
+  const handleSave = () => {
+    setData(localData); // send updated data to parent
+    onSave(); // save to backend
   };
 
   return (
-    <div className="ltm-backdrop" onClick={onClose}>
+    <div className="ltm-backdrop" onClick={onCancel}>
       <div className="ltm-modal" onClick={(e) => e.stopPropagation()}>
         <h3>Edit Lecture Topics & Units</h3>
 
-        {data.map((unit, uIndex) => (
+        {localData.length === 0 && (
+          <div className="text-muted mb-3">
+            No units yet. Click <b>Add Unit</b> to create curriculum structure.
+          </div>
+        )}
+
+        {localData.map((unit, uIndex) => (
           <div key={unit.id} className="ltm-unit">
             <div className="ltm-unit-header">
               <input
@@ -60,9 +82,9 @@ const LectureTopicsModal = ({ data, setData, onClose }) => {
             </div>
 
             {unit.topics.map((topic, tIndex) => (
-              <div key={tIndex} className="ltm-topic">
+              <div key={topic.id} className="ltm-topic">
                 <input
-                  value={topic}
+                  value={topic.name}
                   onChange={(e) => updateTopic(uIndex, tIndex, e.target.value)}
                 />
                 <button
@@ -86,10 +108,10 @@ const LectureTopicsModal = ({ data, setData, onClose }) => {
           </button>
 
           <div className="ltm-actions">
-            <button className="secondary" onClick={onClose}>
+            <button className="secondary" onClick={onCancel}>
               Cancel
             </button>
-            <button className="primary" onClick={onClose}>
+            <button className="primary" onClick={handleSave}>
               Save
             </button>
           </div>

@@ -1,14 +1,18 @@
 const express = require("express");
 const router = express.Router();
-
 const {
-  getLectures,
-  addLecture,
-  deleteLecture,
+  getCurriculum,
+  saveCurriculum,
+  getPlan,
+  savePlan,
 } = require("../controllers/lectureController");
 
-router.get("/", getLectures);
-router.post("/", addLecture);
-router.delete("/:id", deleteLecture);
+// Curriculum
+router.get("/curriculum/:batchId", getCurriculum);
+router.post("/curriculum/:batchId", saveCurriculum);
+
+// Teaching Plan
+router.get("/plan/:batchId", getPlan);
+router.post("/plan/:batchId", savePlan);
 
 module.exports = router;

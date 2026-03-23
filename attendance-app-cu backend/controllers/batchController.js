@@ -1,46 +1,134 @@
-const { readData, writeData } = require("../utils/fileStorage");
+const supabase = require("../config/supabaseClient");
 
-exports.getBatches = (req, res) => {
-  const batches = readData("batches.json");
-  res.json(batches);
+// Generate code for batch
+const generateCode = () => {
+  const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return newCode;
 };
 
-exports.addBatch = (req, res) => {
-  const batches = readData("batches.json");
+// GET ALL BATCHES
+exports.getBatches = async (req, res) => {
+  const { data, error } = await supabase
+    .from("batches")
+    .select("*")
+    .order("name", { ascending: true });
 
-  const newBatch = {
-    id: Date.now().toString(),
-    name: req.body.name,
-  };
+  if (error) return res.status(500).json({ error });
 
-  batches.push(newBatch);
-
-  writeData("batches.json", batches);
-
-  res.json(newBatch);
+  res.json(data);
 };
 
-exports.deleteBatch = (req, res) => {
-  let batches = readData("batches.json");
+// GET SELECTED BATCH
+exports.getSelectedBatches = async (req, res) => {
+  const { id } = req.params;
 
-  batches = batches.filter((b) => b.id !== req.params.id);
+  const { data, error } = await supabase
+    .from("batches")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  writeData("batches.json", batches);
+  if (error) {
+    console.log("FETCH ERROR:", error);
+    return res.status(500).json({ error });
+  }
 
-  res.json({ message: "Batch deleted" });
+  if (!data) {
+    return res.status(404).json({ error: "Batch not found" });
+  }
+
+  res.json(data);
 };
 
-exports.renameBatch = (req, res) => {
-  const batches = readData("batches.json");
+// ADD BATCH
+exports.addBatch = async (req, res) => {
+  const { name } = req.body;
 
-  const updatedBatches = batches.map((batch) => {
-    if (batch.id === req.params.id) {
-      return { ...batch, name: req.body.name };
-    }
-    return batch;
-  });
+  const { data, error } = await supabase
+    .from("batches")
+    .insert([
+      {
+        name,
+        batch_code: generateCode(),
+        threshold: 75,
+        total_students: 0,
+      },
+    ])
+    .select();
 
-  writeData("batches.json", updatedBatches);
+  if (error) {
+    console.log(error);
+    return res.status(500).json({ error });
+  }
 
-  res.json({ message: "Batch renamed successfully" });
+  res.json(data[0]);
+};
+
+// DELETE BATCH
+exports.deleteBatch = async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase.from("batches").delete().eq("id", id);
+
+  if (error) {
+    console.log("DELETE ERROR:", error);
+    return res.status(500).json({ error });
+  }
+
+  res.json({ message: "Batch deleted successfully" });
+};
+
+// RENAME BATCH
+exports.renameBatch = async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  // validation
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: "Batch name is required" });
+  }
+
+  const { data, error } = await supabase
+    .from("batches")
+    .update({ name: name.trim() })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.log("RENAME ERROR:", error);
+    return res.status(500).json({ error });
+  }
+
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: "Batch not found" });
+  }
+
+  res.json(data[0]);
+};
+
+// UPDATE THRESHOLD
+exports.updateThreshold = async (req, res) => {
+  const { id } = req.params;
+  const { threshold } = req.body;
+
+  if (threshold === undefined) {
+    return res.status(400).json({ error: "Threshold is required" });
+  }
+
+  const { data, error } = await supabase
+    .from("batches")
+    .update({ threshold })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.log("THRESHOLD UPDATE ERROR:", error);
+    return res.status(500).json({ error });
+  }
+
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: "Batch not found" });
+  }
+
+  res.json(data[0]);
 };

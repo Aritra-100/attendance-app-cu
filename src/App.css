@@ -36,3 +36,11 @@
     transform: rotate(360deg);
   }
 }
+
+.card-title {
+  font-weight: 600;
+}
+
+.text-muted {
+  font-size: 13px;
+}

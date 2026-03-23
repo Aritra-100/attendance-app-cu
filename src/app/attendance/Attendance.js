@@ -6,8 +6,11 @@ import BatchContext from "../../context/batch/BatchContext";
 import "./Attendance.css";
 
 const Attendance = () => {
+  const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
-  const ATTENDANCE_THRESHOLD = 75;
+
+  // Attendance threshold
+  const [threshold, setThreshold] = useState(0);
 
   // Selected batch from calender
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -15,60 +18,77 @@ const Attendance = () => {
   // Record of students
   const [records, setRecords] = useState([]);
 
+  // Attendance stats
+  const [attendanceStats, setAttendanceStats] = useState({
+    totalClasses: 0,
+    avgAttendance: 0,
+    bestAttendance: {},
+    worstAttendance: {},
+  });
+
+  // Fetch Average Attendance
+  const fetchAttendanceDetails = async (id) => {
+    try {
+      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error?.message || "Failed to fetch stats");
+      }
+
+      setAttendanceStats(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (!activeBatch || !selectedDate) return;
 
-    // fetch attendance by batch + date
-    // console.log("Selected date:", selectedDate);
+    const fetchDailyAttendance = async () => {
+      try {
+        const formattedDate = selectedDate.toISOString().split("T")[0];
 
-    const mockAttendance = [
-      {
-        id: 1,
-        name: "Amit Kumar",
-        roll: "CS101",
-        present: true,
-        percentage: 92,
-      },
-      {
-        id: 2,
-        name: "Priya Sharma",
-        roll: "CS102",
-        present: false,
-        percentage: 75,
-      },
-      {
-        id: 3,
-        name: "Rahul Das",
-        roll: "CS103",
-        present: true,
-        percentage: 65,
-      },
-      {
-        id: 4,
-        name: "Sneha Roy",
-        roll: "CS104",
-        present: true,
-        percentage: 95,
-      },
-    ];
+        const res = await fetch(
+          `${backendUrl}api/attendance/${activeBatch.id}/daily?date=${formattedDate}`,
+        );
 
-    setRecords(mockAttendance);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to fetch attendance");
+        }
+
+        // Convert backend format to UI format
+        const formatted = data.map((s) => ({
+          id: s.id,
+          name: s.name,
+          roll: s.roll,
+          present: s.present,
+          percentage: s.percentage,
+        }));
+
+        setRecords(formatted);
+        setThreshold(activeBatch.threshold);
+
+        fetchAttendanceDetails(activeBatch.id);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchDailyAttendance();
   }, [activeBatch, selectedDate]);
 
   if (!activeBatch) return null;
-
-  const total = records.length;
-  const presentCount = records.filter((s) => s.present).length;
-  const batchPercentage =
-    total === 0 ? 0 : Math.round((presentCount / total) * 100);
 
   return (
     <div className="container-fluid attendance-page">
       {/* HEADER */}
       <div className="mb-4">
-        <h2 className="attendance-title">Attendance</h2>
+        <h2 className="attendance-title">Attendance Records</h2>
         <p className="attendance-subtitle">
-          View attendance records for {activeBatch.name}
+          View attendance records for {activeBatch.name || "Loading..."}
         </p>
       </div>
 
@@ -93,22 +113,43 @@ const Attendance = () => {
         <div className="col-md-6">
           <div className="card attendance-card h-100 batch-summary">
             <div className="card-body batch-summary-body">
+              {/* LEFT MAIN AVG */}
               <div className="summary-left">
-                <p className="stats-title mb-1">Batch Attendance</p>
-                <h2 className="stats-value">{batchPercentage}%</h2>
+                <p className="stats-title mb-1">Average Attendance</p>
+                <h1 className="stats-value-main">
+                  {attendanceStats.avgAttendance || 0}%
+                </h1>
                 <small className="text-muted">
-                  {presentCount} / {total} present
+                  Based on last {attendanceStats.totalClasses || 0} classes
                 </small>
               </div>
 
-              <div className="summary-right">
-                <div className="progress">
-                  <div
-                    className="progress-bar"
-                    style={{ width: `${batchPercentage}%` }}
-                  />
+              {/* RIGHT SIDE STATS */}
+              <div className="summary-right-details">
+                <div className="stat-box best">
+                  <p>Best</p>
+                  <h4>{attendanceStats.bestAttendance.percentage || 0}%</h4>
+                  <small>
+                    {attendanceStats.bestAttendance.date || "yyyy-mm-dd"}
+                  </small>
+                </div>
+
+                <div className="stat-box worst">
+                  <p>Worst</p>
+                  <h4>{attendanceStats.worstAttendance.percentage || 0}%</h4>
+                  <small>
+                    {attendanceStats.bestAttendance.date || "yyyy-mm-dd"}
+                  </small>
                 </div>
               </div>
+            </div>
+
+            {/* PROGRESS BAR FOR AVERAGE */}
+            <div className="progress mt-3">
+              <div
+                className="progress-bar"
+                style={{ width: `${attendanceStats.avgAttendance || 0}%` }}
+              />
             </div>
           </div>
         </div>
@@ -120,7 +161,7 @@ const Attendance = () => {
           <h5 className="card-title mb-3">Students</h5>
 
           {records.length === 0 ? (
-            <p className="text-muted">No attendance recorded for this date</p>
+            <p className="text-muted">No students in this batch</p>
           ) : (
             <div className="attendance-list">
               {records.map((s) => (
@@ -132,7 +173,7 @@ const Attendance = () => {
 
                   <div className="student-metrics">
                     {/* ⚠️ Low attendance marker */}
-                    {s.percentage < ATTENDANCE_THRESHOLD && (
+                    {s.percentage < threshold && (
                       <span
                         className="low-attendance-badge"
                         title="Attendance below 75%"
@@ -145,10 +186,18 @@ const Attendance = () => {
 
                     <span
                       className={`status-pill ${
-                        s.present ? "present" : "absent"
+                        s.present === null
+                          ? "no-class"
+                          : s.present
+                            ? "present"
+                            : "absent"
                       }`}
                     >
-                      {s.present ? "Present" : "Absent"}
+                      {s.present === null
+                        ? "No Class"
+                        : s.present
+                          ? "Present"
+                          : "Absent"}
                     </span>
                   </div>
                 </div>

@@ -184,3 +184,35 @@
   stroke: #7c3aed;
   fill: #7c3aed;
 }
+
+.stats-value-main {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summary-right-details {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-box {
+  background: #f8f9fa;
+  padding: 10px 16px;
+  border-radius: 10px;
+  text-align: center;
+  min-width: 90px;
+}
+
+.stat-box.best h4 {
+  color: #28a745;
+}
+
+.stat-box.worst h4 {
+  color: #dc3545;
+}
+
+.no-class {
+  background-color: #6c757d;
+  color: white;
+}

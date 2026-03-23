@@ -1,43 +1,94 @@
 import { useState, useContext, useEffect } from "react";
-import BatchContext from "../../context/batch/BatchContext";
 import AlertContext from "../../context/alert/AlertContext";
+import BatchContext from "../../context/batch/BatchContext";
+import { useParams } from "react-router-dom";
 
 import "./Dashboard.css";
 
 const Dashboard = () => {
-  const { activeBatch } = useContext(BatchContext);
+  const backendUrl = "http://localhost:5000/";
   const { showAlert } = useContext(AlertContext);
+  const { activeBatch } = useContext(BatchContext);
+  const { batchId } = useParams();
+
+  // Average attendance
+  const [avgAttendance, setAvgAttendance] = useState(0);
 
   // Attendance code
-  const [code, setCode] = useState("");
+  const code = activeBatch?.batch_code;
+
+  // Students in batch
+  const students = activeBatch?.total_students ?? 0;
 
   // Threshold
-  const [threshold, setThreshold] = useState(75);
-  const [savedThreshold, setSavedThreshold] = useState(75);
+  const [threshold, setThreshold] = useState(0);
+  const [savedThreshold, setSavedThreshold] = useState(0);
 
   // Mode
   const [mode, setMode] = useState("manual");
+
+  // Image
   //eslint-disable-next-line
   const [image, setImage] = useState(null);
 
-  const generateCode = () => {
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setCode(newCode);
-  };
-
   const copyCode = () => {
+    if (!code) return;
     navigator.clipboard.writeText(code);
+
     showAlert("Copied", "Copied successfully", "success");
   };
 
-  const batchName = activeBatch ? activeBatch.name : "";
+  // Batch name
+  const batchName = activeBatch?.name || "Loading...";
+
+  // Save new threshold
+  const saveThreshold = async () => {
+    try {
+      const res = await fetch(`${backendUrl}api/batches/${batchId}/threshold`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threshold }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      setSavedThreshold(threshold);
+      showAlert("Saved", "Threshold updated", "success");
+    } catch (err) {
+      showAlert("Error", err.message, "danger");
+    }
+  };
+
+  // Fetch Average Attendance
+  const fetchAverageAttendance = async (id) => {
+    try {
+      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error?.message || "Failed to fetch stats");
+      }
+
+      setAvgAttendance(data.avgAttendance);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
-    if (code !== "") return;
+    if (!batchId) return;
 
-    generateCode();
-    //eslint-disable-next-line
-  }, []);
+    fetchAverageAttendance(batchId);
+  }, [batchId]);
+
+  useEffect(() => {
+    if (activeBatch?.threshold !== undefined) {
+      setThreshold(activeBatch.threshold);
+      setSavedThreshold(activeBatch.threshold);
+    }
+  }, [activeBatch]);
 
   return (
     <div className="container-fluid dashboard">
@@ -54,12 +105,12 @@ const Dashboard = () => {
 
       {/* STATS ROW */}
       <div className="row g-4 mb-4">
-        {/* Studnets in batch */}
+        {/* Students in batch */}
         <div className="col">
           <div className="card dashboard-card h-100">
             <div className="card-body stats-card-body">
               <p className="stats-title">Students in Batch</p>
-              <h2 className="stats-value">42</h2>
+              <h2 className="stats-value">{students || 0}</h2>
               <i className="fa-solid fa-users stats-icon"></i>
             </div>
           </div>
@@ -70,7 +121,7 @@ const Dashboard = () => {
           <div className="card dashboard-card h-100">
             <div className="card-body stats-card-body">
               <p className="stats-title">Average Attendance</p>
-              <h2 className="stats-value">87%</h2>
+              <h2 className="stats-value">{avgAttendance}%</h2>
               <i className="fa-solid fa-percent stats-icon"></i>
             </div>
           </div>
@@ -91,11 +142,9 @@ const Dashboard = () => {
               <input
                 type="text"
                 className="form-control mb-3 text-center fw-bold"
-                value={code}
+                value={code || "Loading..."}
                 readOnly
-                placeholder="Click generate"
               />
-
               <div className="d-flex gap-2 card-actions">
                 <button
                   className="btn btn-primary"
@@ -152,10 +201,7 @@ const Dashboard = () => {
                 <button
                   className="btn btn-primary"
                   disabled={threshold === savedThreshold}
-                  onClick={() => {
-                    setSavedThreshold(threshold);
-                    showAlert("Saved", "Saved successfully", "success");
-                  }}
+                  onClick={saveThreshold}
                 >
                   Save
                 </button>

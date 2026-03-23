@@ -1,10 +1,14 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import BatchContext from "../../context/batch/BatchContext";
+import AlertContext from "../../context/alert/AlertContext";
+
 import "./Lectures.css";
 import LectureTopicsModal from "../../components/lectureModal/LectureModal";
 
 const Lectures = () => {
+  const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
+  const { showAlert } = useContext(AlertContext);
 
   const [mode, setMode] = useState("manual"); // ai | manual
   const [hasSavedPlan, setHasSavedPlan] = useState(false);
@@ -26,21 +30,9 @@ const Lectures = () => {
 
   const [showEditTopics, setShowEditTopics] = useState(false);
 
-  const [lectureTopics, setLectureTopics] = useState([
-    {
-      id: "unit-1",
-      name: "Unit 1: Introduction to Computer Science",
-      topics: [
-        "History of Computing",
-        "What is an Algorithm?",
-        "Data Structures Overview",
-      ],
-    },
-  ]);
+  const [lectureTopics, setLectureTopics] = useState([]);
 
   const [showTopics, setShowTopics] = useState(false);
-
-  if (!activeBatch) return null;
 
   /* ================= HELPERS ================= */
 
@@ -90,13 +82,161 @@ const Lectures = () => {
     setWeeks(updated);
   };
 
-  const savePlan = () => {
-    setMode("manual");
-    setHasSavedPlan(true);
-    setIsEditing(false);
+  // Save new lecture plan
+  const savePlan = async () => {
+    try {
+      // Check if topics exist
+      const hasTopics = lectureTopics.some((u) => u.topics.length > 0);
+
+      if (!hasTopics) {
+        showAlert(
+          "No Topics",
+          "Please add lecture topics before creating a teaching plan",
+          "warning",
+        );
+        return;
+      }
+      const res = await fetch(
+        `${backendUrl}api/lectures/plan/${activeBatch.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            weeks: weeks.map((w, i) => ({
+              week: i + 1,
+              topics: w.topics.map((t) => ({
+                topicId: t.topicId,
+                objectives: t.objectives,
+                classes: t.classes,
+              })),
+            })),
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Failed to save plan");
+
+      showAlert("Saved", "Teaching plan saved successfully", "success");
+
+      setMode("manual");
+      setHasSavedPlan(true);
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+      showAlert("Error", err.message, "danger");
+    }
   };
 
-  /* ================= UI ================= */
+  // Save new curricullam
+  const saveCurriculum = async () => {
+    try {
+      const res = await fetch(
+        `${backendUrl}api/lectures/curriculum/${activeBatch.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            units: lectureTopics.map((u) => ({
+              name: u.name,
+              topics: u.topics.map((t) => ({
+                id: t.id,
+                name: t.name,
+              })),
+            })),
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Failed to save topics");
+
+      showAlert("Saved", "Lecture topics updated", "success");
+    } catch (err) {
+      console.error(err);
+      showAlert("Error", err.message, "danger");
+    }
+  };
+
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    const fetchCurriculum = async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl}api/lectures/curriculum/${activeBatch.id}`,
+        );
+        const data = await res.json();
+
+        if (data.length > 0) {
+          setLectureTopics(
+            data.map((unit, index) => ({
+              id: "unit-" + index,
+              name: unit.name,
+              topics: unit.topics,
+            })),
+          );
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCurriculum();
+  }, [activeBatch]);
+
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    const fetchPlan = async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl}api/lectures/plan/${activeBatch.id}`,
+        );
+        const data = await res.json();
+
+        if (data.length > 0) {
+          const formattedWeeks = data.map((week) => ({
+            id: Date.now() + Math.random(),
+            topics: week.topics.map((t) => ({
+              id: Date.now() + Math.random(),
+              title: t.title,
+              objectives: t.objectives,
+              classes: t.classes,
+              topicId: t.topicId,
+            })),
+          }));
+
+          setWeeks(formattedWeeks);
+          setHasSavedPlan(true);
+          setIsEditing(false);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchPlan();
+  }, [activeBatch]);
+
+  useEffect(() => {
+    if (lectureTopics.length === 0 && activeBatch) {
+      showAlert(
+        "No Topics",
+        "Please add lecture topics before creating a teaching plan",
+        "danger",
+      );
+    }
+    //eslint-disable-next-line
+  }, [lectureTopics]);
+
+  if (!activeBatch) return;
 
   return (
     <div className="container-fluid lectures-page">
@@ -145,19 +285,31 @@ const Lectures = () => {
           <div className="card-body">
             <h5 className="card-title mb-3">Lecture Topics</h5>
 
-            {lectureTopics.map((unit) => (
-              <div key={unit.id} className="mb-3">
-                <h6 className="fw-semibold">{unit.name}</h6>
-
-                <ul className="ms-3">
-                  {unit.topics.map((topic, index) => (
-                    <li key={index} className="text-muted">
-                      {topic}
-                    </li>
-                  ))}
-                </ul>
+            {lectureTopics.length === 0 ||
+            lectureTopics.every((u) => u.topics.length === 0) ? (
+              <div className="text-muted">
+                No topics added yet. Please click <b>Edit Topics</b> to add
+                units and topics.
               </div>
-            ))}
+            ) : (
+              lectureTopics.map((unit) => (
+                <div key={unit.id} className="mb-3">
+                  <h6 className="fw-semibold">{unit.name}</h6>
+
+                  {unit.topics.length === 0 ? (
+                    <p className="text-muted ms-3">No topics in this unit</p>
+                  ) : (
+                    <ul className="ms-3">
+                      {unit.topics.map((topic) => (
+                        <li key={topic.id} className="text-muted">
+                          {topic.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -255,102 +407,145 @@ const Lectures = () => {
               )}
 
               {/* MANUAL MODE */}
-              {mode === "manual" && isEditing && (
-                <div className="manual-plan">
-                  {weeks.map((week, wIndex) => (
-                    <div key={week.id} className="week-container">
-                      <div className="week-header">
-                        <h5>Week {wIndex + 1}</h5>
-                        <i
-                          className="fa-solid fa-trash delete-week"
-                          onClick={() => removeWeek(wIndex)}
-                        ></i>
-                      </div>
+              {/* MANUAL MODE */}
+              {mode === "manual" &&
+                isEditing &&
+                (lectureTopics.some((u) => u.topics.length > 0) ? (
+                  <div className="manual-plan">
+                    {weeks.map((week, wIndex) => (
+                      <div key={week.id} className="week-container">
+                        <div className="week-header">
+                          <h5>Week {wIndex + 1}</h5>
+                          <i
+                            className="fa-solid fa-trash delete-week"
+                            onClick={() => removeWeek(wIndex)}
+                          ></i>
+                        </div>
 
-                      {week.topics.map((topic, tIndex) => (
-                        <div key={topic.id} className="topic-container">
-                          <div className="topic-top">
-                            <div className="input-group">
-                              <label>Topic Title</label>
-                              <input
-                                value={topic.title}
-                                placeholder="Enter topic name"
-                                onChange={(e) =>
-                                  updateTopic(
-                                    wIndex,
-                                    tIndex,
-                                    "title",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
+                        {week.topics.map((topic, tIndex) => (
+                          <div key={topic.id} className="topic-container">
+                            <div className="topic-top">
+                              <div className="input-group">
+                                <label>Topic Title</label>
+                                <select
+                                  value={topic.topicId || ""}
+                                  onChange={(e) => {
+                                    const selectedTopicId = e.target.value;
 
-                            <div className="input-group small">
-                              <label>Classes</label>
-                              <div className="classes-input-wrapper">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={topic.classes}
-                                  onChange={(e) =>
+                                    const selectedTopic = lectureTopics
+                                      .flatMap((u) => u.topics)
+                                      .find((t) => t.id === selectedTopicId);
+
+                                    if (!selectedTopic) return;
+
                                     updateTopic(
                                       wIndex,
                                       tIndex,
-                                      "classes",
-                                      Number(e.target.value),
-                                    )
-                                  }
+                                      "topicId",
+                                      selectedTopic.id,
+                                    );
+                                    updateTopic(
+                                      wIndex,
+                                      tIndex,
+                                      "title",
+                                      selectedTopic.name,
+                                    );
+                                  }}
+                                >
+                                  <option value="">Select Topic</option>
+
+                                  {lectureTopics.map((unit) =>
+                                    unit.topics.map((t) => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.name}
+                                      </option>
+                                    )),
+                                  )}
+                                </select>
+                              </div>
+
+                              <div className="input-group small">
+                                <label>Classes</label>
+                                <div className="classes-input-wrapper">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={topic.classes}
+                                    onChange={(e) =>
+                                      updateTopic(
+                                        wIndex,
+                                        tIndex,
+                                        "classes",
+                                        Number(e.target.value),
+                                      )
+                                    }
+                                  />
+                                  <i
+                                    className="fa-solid fa-trash topic-delete"
+                                    onClick={() => removeTopic(wIndex, tIndex)}
+                                  ></i>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="input-group">
+                              <div className="floating-group">
+                                <textarea
+                                  value={topic.objectives}
+                                  placeholder={`Write learning objectives...
+• Understand concept of X
+• Apply Y method
+• Analyze Z problem`}
+                                  onChange={(e) => {
+                                    updateTopic(
+                                      wIndex,
+                                      tIndex,
+                                      "objectives",
+                                      e.target.value,
+                                    );
+
+                                    e.target.style.height = "auto";
+                                    e.target.style.height =
+                                      e.target.scrollHeight + "px";
+                                  }}
+                                  style={{
+                                    minHeight: "140px",
+                                    resize: "none",
+                                    overflow: "hidden",
+                                  }}
                                 />
-                                <i
-                                  className="fa-solid fa-trash topic-delete"
-                                  onClick={() => removeTopic(wIndex, tIndex)}
-                                ></i>
                               </div>
                             </div>
                           </div>
+                        ))}
 
-                          <div className="input-group">
-                            <label>Learning Objectives</label>
-                            <textarea
-                              value={topic.objectives}
-                              placeholder="Enter objective"
-                              onChange={(e) =>
-                                updateTopic(
-                                  wIndex,
-                                  tIndex,
-                                  "objectives",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
+                        <button
+                          className="btn btn-outline-secondary add-topic-btn"
+                          onClick={() => addTopic(wIndex)}
+                        >
+                          <i className="fa-solid fa-plus"></i> Add Topic
+                        </button>
+                      </div>
+                    ))}
 
+                    <div className="manual-footer">
                       <button
-                        className="btn btn-outline-secondary add-topic-btn"
-                        onClick={() => addTopic(wIndex)}
+                        className="btn btn-outline-secondary"
+                        onClick={addWeek}
                       >
-                        <i className="fa-solid fa-plus"></i> Add Topic
+                        <i className="fa-solid fa-plus"></i> Add Week
+                      </button>
+
+                      <button className="btn btn-primary" onClick={savePlan}>
+                        <i className="fa-solid fa-save"></i> Save Plan
                       </button>
                     </div>
-                  ))}
-
-                  <div className="manual-footer">
-                    <button
-                      className="btn btn-outline-secondary"
-                      onClick={addWeek}
-                    >
-                      <i className="fa-solid fa-plus"></i> Add Week
-                    </button>
-
-                    <button className="btn btn-primary" onClick={savePlan}>
-                      <i className="fa-solid fa-save"></i> Save Plan
-                    </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-muted">
+                    Please add lecture topics before creating a teaching plan.
+                  </div>
+                ))}
             </>
           )}
         </div>
@@ -359,7 +554,11 @@ const Lectures = () => {
         <LectureTopicsModal
           data={lectureTopics}
           setData={setLectureTopics}
-          onClose={() => setShowEditTopics(false)}
+          onCancel={() => setShowEditTopics(false)}
+          onSave={() => {
+            saveCurriculum();
+            setShowEditTopics(false);
+          }}
         />
       )}
     </div>

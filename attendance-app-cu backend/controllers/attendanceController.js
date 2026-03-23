@@ -1,31 +1,157 @@
-const { readData, writeData } = require("../utils/fileStorage");
+const supabase = require("../config/supabaseClient");
 
-exports.getAttendance = (req, res) => {
-  const attendance = readData("attendance.json");
-  res.json(attendance);
+// Get attendance stats
+exports.getAttendanceStats = async (req, res) => {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from("batch_attendances")
+    .select("attendance_percentage, date")
+    .eq("batch_id", id)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.log("FETCH ERROR:", error);
+    return res.status(500).json({ error });
+  }
+
+  if (!data || data.length === 0) {
+    return res.json({
+      totalClasses: 0,
+      avgAttendance: 0,
+      bestAttendance: { percentage: 0, date: null },
+      worstAttendance: { percentage: 0, date: null },
+    });
+  }
+
+  const totalClasses = data.length;
+
+  const avgAttendance = (
+    data.reduce((sum, row) => sum + row.attendance_percentage, 0) / totalClasses
+  ).toFixed(1);
+
+  // Find best
+  let best = data[0];
+  let worst = data[0];
+
+  data.forEach((row) => {
+    if (row.attendance_percentage > best.attendance_percentage) {
+      best = row;
+    }
+    if (row.attendance_percentage < worst.attendance_percentage) {
+      worst = row;
+    }
+  });
+
+  res.json({
+    totalClasses,
+    avgAttendance,
+    bestAttendance: {
+      percentage: best.attendance_percentage,
+      date: best.date,
+    },
+    worstAttendance: {
+      percentage: worst.attendance_percentage,
+      date: worst.date,
+    },
+  });
 };
 
-exports.addAttendance = (req, res) => {
-  const attendance = readData("attendance.json");
+// GET WEEKLY ATTENDANCE GRAPH
+exports.getAttendanceGraph = async (req, res) => {
+  const { id } = req.params;
 
-  const newAttendance = {
-    id: Date.now().toString(),
-    ...req.body,
-  };
+  const { data, error } = await supabase
+    .from("batch_attendances")
+    .select("attendance_percentage, date")
+    .eq("batch_id", id)
+    .order("date", { ascending: true });
 
-  attendance.push(newAttendance);
+  if (error) {
+    console.log(error);
+    return res.status(500).json({ error });
+  }
 
-  writeData("attendance.json", attendance);
-
-  res.json(newAttendance);
+  res.json(data);
 };
 
-exports.deleteAttendance = (req, res) => {
-  let attendance = readData("attendance.json");
+// GET daily attendance for a batch on a specific date
+exports.getDailyAttendance = async (req, res) => {
+  const { batchId } = req.params;
+  const { date } = req.query; // YYYY-MM-DD
 
-  attendance = attendance.filter((record) => record.id !== req.params.id);
+  if (!date) {
+    return res.status(400).json({ error: "Date is required" });
+  }
 
-  writeData("attendance.json", attendance);
+  try {
+    // 1. Get all students in batch
+    const { data: students, error: studentsError } = await supabase
+      .from("enrollments")
+      .select(
+        `
+        student_id,
+        students!enrollments_student_id_fkey (
+          student_id,
+          roll_no,
+          attendance_percentage,
+          users!students_user_id_fkey (
+            name,
+            avatar
+          )
+        )
+      `,
+      )
+      .eq("batch_id", batchId);
 
-  res.json({ message: "Attendance record deleted" });
+    if (studentsError) throw studentsError;
+
+    // 2. Get attendance for that date
+    const { data: attendance, error: attendanceError } = await supabase
+      .from("student_attendances")
+      .select("student_id, present")
+      .eq("batch_id", batchId)
+      .eq("date", date);
+
+    if (attendanceError) throw attendanceError;
+
+    // 3. Map attendance
+    const attendanceMap = {};
+    attendance.forEach((a) => {
+      attendanceMap[a.student_id] = a.present;
+    });
+
+    // 4. Format response
+    const formatted = students.map((s) => ({
+      id: s.students.student_id,
+      name: s.students.users.name,
+      avatar: s.students.users.avatar,
+      roll: s.students.roll_no,
+      percentage: s.students.attendance_percentage || 0,
+      present: attendanceMap[s.students.student_id] ?? null,
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get frequent absentees
+exports.getFrequentAbsentees = async (req, res) => {
+  const { id } = req.params; // batchId
+
+  try {
+    const { data, error } = await supabase.rpc("frequent_absentees", {
+      batch_id_input: id,
+    });
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: err.message });
+  }
 };

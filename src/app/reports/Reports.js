@@ -1,54 +1,132 @@
-import { useContext, useState, useMemo } from "react";
+import { useContext, useState, useMemo, useEffect } from "react";
 import BatchContext from "../../context/batch/BatchContext";
 import "./Reports.css";
 
-/* ✅ Static data OUTSIDE component */
-const BASE_WEEK = [
-  { day: "Mon", percent: 82 },
-  { day: "Tue", percent: 50 },
-  { day: "Wed", percent: 75 },
-  { day: "Thu", percent: 90 },
-  { day: "Fri", percent: 86 },
-  { day: "Sat", percent: 70 },
-];
-
-const ATTENDANCE_THRESHOLD = 75;
-
 const Reports = () => {
+  const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
+
+  const [weeklyAttendance, setWeeklyAttendance] = useState([]);
 
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week
   const [weekMode, setWeekMode] = useState("6"); // "5" or "6"
 
-  // 🔹 Mock absentees data
-  const frequentAbsentees = [
-    { id: 1, name: "Rahul Das", absences: 4 },
-    { id: 2, name: "Priya Sharma", absences: 3 },
-    { id: 3, name: "Amit Kumar", absences: 3 },
-  ];
+  // Attendance threshold
+  const [threshold, setThreshold] = useState(0);
 
-  // ✅ Derived weekly data
-  const weeklyAttendance = useMemo(() => {
-    return weekMode === "5" ? BASE_WEEK.slice(0, 5) : BASE_WEEK;
-  }, [weekMode]);
+  // Frequent absentees
+  const [frequentAbsentees, setFrequentAbsentees] = useState([]);
 
-  // ✅ Week label
-  const weekLabel = useMemo(() => {
+  const fetchFrequentAbsentees = async () => {
+    try {
+      const res = await fetch(
+        `${backendUrl}api/attendance/${activeBatch.id}/frequent-absentees`,
+      );
+      const data = await res.json();
+
+      setFrequentAbsentees(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    fetchFrequentAbsentees();
+    //eslint-disable-next-line
+  }, [activeBatch]);
+
+  // Get week range
+  const getWeekRange = () => {
     const start = new Date();
-    start.setDate(start.getDate() - start.getDay() + 1 + weekOffset * 7);
+    start.setHours(0, 0, 0, 0);
+
+    // Make Monday the first day
+    const day = start.getDay(); // 0 = Sun, 1 = Mon, ...
+    const diff = (day === 0 ? -6 : 1 - day) + weekOffset * 7;
+
+    start.setDate(start.getDate() + diff);
 
     const end = new Date(start);
     end.setDate(start.getDate() + (weekMode === "5" ? 4 : 5));
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  };
+
+  // Week label
+  const weekLabel = useMemo(() => {
+    const { start, end } = getWeekRange();
 
     const opts = { month: "short", day: "numeric" };
-    return `${start.toLocaleDateString(
-      "en-US",
-      opts
-    )} – ${end.toLocaleDateString("en-US", opts)}`;
+    return `${start.toLocaleDateString("en-US", opts)} - ${end.toLocaleDateString("en-US", opts)}`;
+    //eslint-disable-next-line
   }, [weekOffset, weekMode]);
 
-  // ✅ Safe conditional render AFTER hooks
-  if (!activeBatch) return null;
+  // Fetch graph data
+  const fetchGraph = async () => {
+    try {
+      const res = await fetch(
+        `${backendUrl}api/attendance/${activeBatch.id}/graph`,
+      );
+      const data = await res.json();
+
+      const { start, end } = getWeekRange();
+
+      const filtered = data.filter((d) => {
+        const attendanceDate = new Date(d.date);
+        return attendanceDate >= start && attendanceDate <= end;
+      });
+
+      if (filtered.length === 0) {
+        setWeeklyAttendance([]);
+        return;
+      }
+
+      // If no classes happened this week → show empty state
+      if (filtered.length === 0) {
+        setWeeklyAttendance([]);
+        return;
+      }
+
+      // Convert to graph format
+      const daysOrder =
+        weekMode === "5"
+          ? ["Mon", "Tue", "Wed", "Thu", "Fri"]
+          : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+      const dayMap = {};
+
+      filtered.forEach((d) => {
+        const day = new Date(d.date).toLocaleDateString("en-US", {
+          weekday: "short",
+        });
+        dayMap[day] = d.attendance_percentage;
+      });
+
+      const formatted = daysOrder.map((day) => ({
+        day,
+        percent: dayMap[day] || 0,
+      }));
+
+      setWeeklyAttendance(formatted);
+    } catch (err) {
+      console.error("Failed to fetch graph data", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    fetchGraph();
+    setThreshold(activeBatch.threshold);
+    //eslint-disable-next-line
+  }, [activeBatch, weekOffset, weekMode]);
+
+  if (!activeBatch) {
+    return <div className="p-4">Loading batch...</div>; // MAKE THIS GLOBAL AND BETTER LOOKING
+  }
 
   return (
     <div className="container-fluid reports-page">
@@ -118,11 +196,15 @@ const Reports = () => {
                       <div className="bar-wrapper">
                         <div
                           className={`bar-fill ${
-                            d.percent < ATTENDANCE_THRESHOLD ? "low" : ""
+                            d.percent < threshold ? "low" : ""
                           }`}
                           style={{ height: `${d.percent}%` }}
                         >
-                          <span className="bar-tooltip">{d.percent}%</span>
+                          <span className="bar-tooltip">
+                            {d.percent === 0
+                              ? "No class conducted"
+                              : `${d.percent}%`}
+                          </span>
                         </div>
                       </div>
                       <span className="bar-label">{d.day}</span>

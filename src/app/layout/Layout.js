@@ -1,12 +1,22 @@
-import React, { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import Navbar from "./navbar/Navbar";
 import Sidebar from "./sidebar/Sidebar";
+
+import BatchContext from "../../context/batch/BatchContext";
 import "./Layout.css";
 
 const Layout = () => {
   const { batchId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { fetchBatchById } = useContext(BatchContext);
+
+  useEffect(() => {
+    if (batchId) {
+      fetchBatchById(batchId);
+    }
+    //eslint-disable-next-line
+  }, [batchId]);
 
   return (
     <>

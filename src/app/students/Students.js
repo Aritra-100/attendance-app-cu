@@ -8,47 +8,11 @@ import FaceRegisterModal from "../../components/faceRegisterModal/FaceRegisterMo
 import "./Students.css";
 
 const Students = () => {
+  const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
   const { showAlert } = useContext(AlertContext);
 
-  // 🔹 Mock students data
-  const [students, setStudents] = useState([
-    {
-      id: 1,
-      name: "Alex Johnson",
-      roll: "20CS101",
-      attendance: 0,
-      faceRegistered: false,
-    },
-    {
-      id: 2,
-      name: "Student 2",
-      roll: "20CS102",
-      attendance: 0,
-      faceRegistered: true,
-    },
-    {
-      id: 3,
-      name: "Student 3",
-      roll: "20CS103",
-      attendance: 0,
-      faceRegistered: true,
-    },
-    {
-      id: 4,
-      name: "Student 4",
-      roll: "20CS104",
-      attendance: 0,
-      faceRegistered: true,
-    },
-    {
-      id: 5,
-      name: "Student 5",
-      roll: "20CS105",
-      attendance: 0,
-      faceRegistered: false,
-    },
-  ]);
+  const [students, setStudents] = useState([]);
 
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -57,10 +21,81 @@ const Students = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [showFaceRegister, setShowFaceRegister] = useState(false);
 
-  const handleAddStudent = (student) => {
-    setStudents((prev) => [...prev, student]);
+  const handleAddStudent = async (student) => {
+    try {
+      const res = await fetch(`${backendUrl}api/students`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...student,
+          batchId: activeBatch.id,
+        }),
+      });
 
-    showAlert("Added", "New student was added", "success");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to add student");
+      }
+
+      setStudents((prev) => [...prev, data]);
+
+      showAlert("Added", "New student was added", "success");
+    } catch (err) {
+      console.error(err);
+      showAlert("Error", err.message, "danger");
+    }
+  };
+
+  const handleDeleteStudent = async (id) => {
+    try {
+      const res = await fetch(
+        `${backendUrl}api/students/${id}/${activeBatch.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete student");
+      }
+
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      setOpenMenuId(null);
+
+      showAlert("Deleted", "Student was deleted", "danger");
+    } catch (err) {
+      console.error(err);
+      showAlert("Error", err.message, "danger");
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch(`${backendUrl}api/students/${activeBatch.id}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Failed to fetch students");
+
+      setStudents(data);
+    } catch (err) {
+      console.error(err);
+      showAlert("Error", "Failed to load students", "danger");
+    }
+  };
+
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    fetchStudents();
+    //eslint-disable-next-line
+  }, [activeBatch]);
+
+  const handleRefresh = () => {
+    fetchStudents();
+    showAlert("Refreshed", "Student data refreshed", "primary");
   };
 
   const isEmpty = students.length === 0;
@@ -91,17 +126,6 @@ const Students = () => {
 
   // conditional return AFTER hooks
   if (!activeBatch) return null;
-
-  const handleDeleteStudent = (id) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
-    setOpenMenuId(null);
-
-    showAlert("Deleted", "Student was deleted", "danger");
-  };
-
-  const handleRefresh = () => {
-    showAlert("Refreshed", "Face regestration data refreshed", "primary");
-  };
 
   return (
     <div className="container-fluid students-page">
@@ -200,7 +224,10 @@ const Students = () => {
               {students.map((s) => (
                 <div key={s.id} className="students-table-row">
                   <div className="student-info">
-                    <img src={s.avatar} alt={s.name} />
+                    <img
+                      src={s.avatar || "https://i.pravatar.cc/40?u=" + s.id}
+                      alt={s.name}
+                    />
                     <span>{s.name}</span>
                   </div>
 

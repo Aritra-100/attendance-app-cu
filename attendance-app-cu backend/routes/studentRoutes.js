@@ -2,13 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  getStudents,
+  getStudentsByBatch,
   addStudent,
+  removeStudentFromBatch,
   deleteStudent,
 } = require("../controllers/studentController");
 
-router.get("/", getStudents);
+router.get("/:batchId", getStudentsByBatch);
 router.post("/", addStudent);
+router.delete("/:id/:batchId", removeStudentFromBatch);
 router.delete("/:id", deleteStudent);
 
 module.exports = router;
