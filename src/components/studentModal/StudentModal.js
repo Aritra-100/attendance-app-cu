@@ -10,6 +10,7 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
     email: "",
     roll: "",
     department: "",
+    institution: "",
   });
 
   useEffect(() => {
@@ -19,6 +20,7 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
         email: "",
         roll: "",
         department: "",
+        institution: "",
       });
     }
   }, [isOpen]);
@@ -33,9 +35,9 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleSubmit = () => {
-    const { name, email, roll, department } = form;
+    const { name, email, roll, department, institution } = form;
 
-    if (!name || !email || !roll || !department) return;
+    if (!name || !email || !roll || !department || !institution) return;
 
     onSubmit({
       id: Date.now(),
@@ -44,6 +46,7 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
       roll,
       department,
       attendance: 0,
+      institution,
       faceRegistered: false,
     });
 
@@ -51,7 +54,7 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const isDisabled =
-    !form.name || !form.email || !form.roll || !form.department;
+    !form.name || !form.email || !form.roll || !form.department || !form.institution;
 
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
@@ -116,6 +119,17 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
               onChange={handleChange}
             />
           </label>
+
+          <label>
+            Instituition
+            <input
+              type="text"
+              name="institution"
+              placeholder="ABC College"
+              value={form.institution}
+              onChange={handleChange}
+            />
+          </label>
         </div>
 
         {/* FOOTER */}
@@ -134,7 +148,7 @@ const StudentModal = ({ isOpen, onClose, onSubmit }) => {
         </div>
       </div>
     </div>,
-    modalRoot
+    modalRoot,
   );
 };
 

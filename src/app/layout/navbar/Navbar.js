@@ -9,8 +9,10 @@ const Navbar = (props) => {
   const { toggleSidebar, isSidebarOpen } = props;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const { batchId } = useParams();
-  const basePath = batchId ? `/user/${batchId}` : null;
+  const { userId, batchId } = useParams();
+  const basePath = userId && batchId ? `/${userId}/${batchId}` : null;
+  const homePath = userId ? `/${userId}` : "/";
+  const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -28,7 +30,7 @@ const Navbar = (props) => {
     <nav className="navbar custom-navbar">
       {/* LEFT */}
       <div className="navbar-left">
-        <NavLink to="/" className="brand">
+        <NavLink to={homePath} className="brand">
           <img src={AppLogo} alt="logo" className="brand-logo" />
           <span className="brand-text">Smart Attendance</span>
         </NavLink>
@@ -135,13 +137,23 @@ const Navbar = (props) => {
 
           {dropdownOpen && (
             <div className="dropdown">
-              {/* To be made dynamic with each user and role */}
-              <h6>Rajdeep - Teacher</h6>
-              <p>example@gmail.com</p>
+              <h6>
+                {storedUser?.name || "User"} - {storedUser?.role || "Member"}
+              </h6>
+              <p>{storedUser?.email || ""}</p>
               <NavLink to="/profile" onClick={() => setDropdownOpen(false)}>
                 Profile
               </NavLink>
-              <button className="logout">Logout</button>
+              <button
+                className="logout"
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  window.location.href = "/login";
+                }}
+              >
+                Logout
+              </button>
             </div>
           )}
         </div>

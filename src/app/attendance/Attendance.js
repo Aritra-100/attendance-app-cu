@@ -1,4 +1,5 @@
-import { useContext, useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
+import { useParams } from "react-router-dom";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 
@@ -7,6 +8,7 @@ import "./Attendance.css";
 
 const Attendance = () => {
   const backendUrl = "http://localhost:5000/";
+  const { batchId } = useParams();
   const { activeBatch } = useContext(BatchContext);
 
   // Attendance threshold
@@ -29,7 +31,12 @@ const Attendance = () => {
   // Fetch Average Attendance
   const fetchAttendanceDetails = async (id) => {
     try {
-      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -43,14 +50,20 @@ const Attendance = () => {
   };
 
   useEffect(() => {
-    if (!activeBatch || !selectedDate) return;
+    if (!batchId || !selectedDate) return;
 
     const fetchDailyAttendance = async () => {
       try {
+        const token = localStorage.getItem("token");
         const formattedDate = selectedDate.toISOString().split("T")[0];
 
         const res = await fetch(
-          `${backendUrl}api/attendance/${activeBatch.id}/daily?date=${formattedDate}`,
+          `${backendUrl}api/attendance/${batchId}/daily?date=${formattedDate}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
         );
 
         const data = await res.json();
@@ -69,9 +82,9 @@ const Attendance = () => {
         }));
 
         setRecords(formatted);
-        setThreshold(activeBatch.threshold);
+        setThreshold(activeBatch?.threshold || 0);
 
-        fetchAttendanceDetails(activeBatch.id);
+        fetchAttendanceDetails(batchId);
       } catch (err) {
         console.error(err);
       }
@@ -138,7 +151,7 @@ const Attendance = () => {
                   <p>Worst</p>
                   <h4>{attendanceStats.worstAttendance.percentage || 0}%</h4>
                   <small>
-                    {attendanceStats.bestAttendance.date || "yyyy-mm-dd"}
+                    {attendanceStats.worstAttendance.date || "yyyy-mm-dd"}
                   </small>
                 </div>
               </div>

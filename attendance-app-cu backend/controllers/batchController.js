@@ -1,17 +1,18 @@
 const supabase = require("../config/supabaseClient");
 
 // Generate code for batch
-const generateCode = () => {
-  const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return newCode;
-};
+const generateCode = () =>
+  Math.random().toString(36).substring(2, 8).toUpperCase();
 
 // GET ALL BATCHES
 exports.getBatches = async (req, res) => {
-  const { data, error } = await supabase
-    .from("batches")
-    .select("*")
-    .order("name", { ascending: true });
+  let query = supabase.from("batches").select("*").order("name", { ascending: true });
+
+  if (req.user.role === "teacher") {
+    query = query.eq("teacher_id", req.user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) return res.status(500).json({ error });
 
@@ -26,6 +27,7 @@ exports.getSelectedBatches = async (req, res) => {
     .from("batches")
     .select("*")
     .eq("id", id)
+    .eq("teacher_id", req.user.id)
     .single();
 
   if (error) {
@@ -44,17 +46,30 @@ exports.getSelectedBatches = async (req, res) => {
 exports.addBatch = async (req, res) => {
   const { name } = req.body;
 
-  const { data, error } = await supabase
-    .from("batches")
-    .insert([
-      {
-        name,
-        batch_code: generateCode(),
-        threshold: 75,
-        total_students: 0,
-      },
-    ])
-    .select();
+  let data = null;
+  let error = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const result = await supabase
+      .from("batches")
+      .insert([
+        {
+          name,
+          batch_code: generateCode(),
+          teacher_id: req.user.id,
+          threshold: 75,
+          total_students: 0,
+        },
+      ])
+      .select();
+
+    data = result.data;
+    error = result.error;
+
+    if (!error || error.code !== "23505") {
+      break;
+    }
+  }
 
   if (error) {
     console.log(error);
@@ -68,7 +83,11 @@ exports.addBatch = async (req, res) => {
 exports.deleteBatch = async (req, res) => {
   const { id } = req.params;
 
-  const { error } = await supabase.from("batches").delete().eq("id", id);
+  const { error } = await supabase
+    .from("batches")
+    .delete()
+    .eq("id", id)
+    .eq("teacher_id", req.user.id);
 
   if (error) {
     console.log("DELETE ERROR:", error);
@@ -92,6 +111,7 @@ exports.renameBatch = async (req, res) => {
     .from("batches")
     .update({ name: name.trim() })
     .eq("id", id)
+    .eq("teacher_id", req.user.id)
     .select();
 
   if (error) {
@@ -119,6 +139,7 @@ exports.updateThreshold = async (req, res) => {
     .from("batches")
     .update({ threshold })
     .eq("id", id)
+    .eq("teacher_id", req.user.id)
     .select();
 
   if (error) {

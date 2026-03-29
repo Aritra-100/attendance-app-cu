@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import BatchContext from "../../context/batch/BatchContext";
 import "./Profile.css";
 
+const token = localStorage.getItem("token");
+
 const Profile = () => {
   const navigate = useNavigate();
   const { activeBatch } = useContext(BatchContext);
+  const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -30,9 +33,9 @@ const Profile = () => {
 
   const handleBackToDashboard = () => {
     if (activeBatch) {
-      navigate(`/user/${activeBatch.id}/dashboard`);
+      navigate(`/${storedUser?.id}/${activeBatch.id}/dashboard`);
     } else {
-      navigate("/");
+      navigate(storedUser?.id ? `/${storedUser.id}` : "/");
     }
   };
 

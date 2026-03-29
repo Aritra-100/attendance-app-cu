@@ -7,6 +7,7 @@ const batchRoutes = require("./routes/batchRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const lectureRoutes = require("./routes/lectureRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use("/api/batches", batchRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/lectures", lectureRoutes);
+app.use("/api/auth", authRoutes);
 
 const PORT = 5000;
 

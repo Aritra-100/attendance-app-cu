@@ -1,4 +1,5 @@
 import { useContext, useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import BatchContext from "../../context/batch/BatchContext";
 import AlertContext from "../../context/alert/AlertContext";
 
@@ -9,6 +10,7 @@ const Lectures = () => {
   const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
   const { showAlert } = useContext(AlertContext);
+  const { batchId } = useParams();
 
   const [mode, setMode] = useState("manual"); // ai | manual
   const [hasSavedPlan, setHasSavedPlan] = useState(false);
@@ -35,6 +37,96 @@ const Lectures = () => {
   const [showTopics, setShowTopics] = useState(false);
 
   /* ================= HELPERS ================= */
+
+  const formatCurriculumData = (data) =>
+    data.map((unit, index) => ({
+      id: "unit-" + index,
+      name: unit.name,
+      topics: unit.topics,
+    }));
+
+  const fetchCurriculum = async (targetBatchId = batchId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${backendUrl}api/lectures/curriculum/${targetBatchId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      if (!res.ok) {
+        throw new Error("Failed to load lecture topics");
+      }
+      const data = await res.json();
+
+      if (Array.isArray(data) && data.length > 0) {
+        setLectureTopics(formatCurriculumData(data));
+      } else {
+        setLectureTopics([]);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const resetPlanState = () => {
+    setWeeks([
+      {
+        id: Date.now(),
+        topics: [
+          {
+            id: Date.now() + 1,
+            title: "",
+            objectives: "",
+            classes: 1,
+          },
+        ],
+      },
+    ]);
+    setHasSavedPlan(false);
+    setIsEditing(true);
+    setMode("manual");
+  };
+
+  const fetchPlan = async (targetBatchId = batchId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/lectures/plan/${targetBatchId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load teaching plan");
+      }
+      const data = await res.json();
+
+      if (Array.isArray(data) && data.length > 0) {
+        const formattedWeeks = data.map((week) => ({
+          id: Date.now() + Math.random(),
+          topics: week.topics.map((t) => ({
+            id: Date.now() + Math.random(),
+            title: t.title,
+            objectives: t.objectives,
+            classes: t.classes,
+            topicId: t.topicId,
+          })),
+        }));
+
+        setWeeks(formattedWeeks);
+        setHasSavedPlan(true);
+        setIsEditing(false);
+        return;
+      }
+
+      resetPlanState();
+    } catch (err) {
+      console.error(err);
+      resetPlanState();
+    }
+  };
 
   const addWeek = () => {
     setWeeks((prev) => [
@@ -85,6 +177,18 @@ const Lectures = () => {
   // Save new lecture plan
   const savePlan = async () => {
     try {
+      const token = localStorage.getItem("token");
+
+      // Validate topics
+      for (const week of weeks) {
+        for (const topic of week.topics) {
+          if (!topic.topicId) {
+            showAlert("Error", "Please select topic for all entries", "danger");
+            return;
+          }
+        }
+      }
+
       // Check if topics exist
       const hasTopics = lectureTopics.some((u) => u.topics.length > 0);
 
@@ -96,25 +200,23 @@ const Lectures = () => {
         );
         return;
       }
-      const res = await fetch(
-        `${backendUrl}api/lectures/plan/${activeBatch.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            weeks: weeks.map((w, i) => ({
-              week: i + 1,
-              topics: w.topics.map((t) => ({
-                topicId: t.topicId,
-                objectives: t.objectives,
-                classes: t.classes,
-              })),
-            })),
-          }),
+      const res = await fetch(`${backendUrl}api/lectures/plan/${batchId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          weeks: weeks.map((w, i) => ({
+            week: i + 1,
+            topics: w.topics.map((t) => ({
+              topicId: t.topicId,
+              objectives: t.objectives,
+              classes: t.classes,
+            })),
+          })),
+        }),
+      });
 
       const data = await res.json();
 
@@ -132,17 +234,20 @@ const Lectures = () => {
   };
 
   // Save new curricullam
-  const saveCurriculum = async () => {
+  const saveCurriculum = async (topicsData = lectureTopics) => {
     try {
+      const token = localStorage.getItem("token");
+
       const res = await fetch(
-        `${backendUrl}api/lectures/curriculum/${activeBatch.id}`,
+        `${backendUrl}api/lectures/curriculum/${batchId}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            units: lectureTopics.map((u) => ({
+            units: topicsData.map((u) => ({
               name: u.name,
               topics: u.topics.map((t) => ({
                 id: t.id,
@@ -157,6 +262,8 @@ const Lectures = () => {
 
       if (!res.ok) throw new Error(data?.error || "Failed to save topics");
 
+      await fetchCurriculum(batchId);
+      await fetchPlan(batchId);
       showAlert("Saved", "Lecture topics updated", "success");
     } catch (err) {
       console.error(err);
@@ -167,74 +274,14 @@ const Lectures = () => {
   useEffect(() => {
     if (!activeBatch) return;
 
-    const fetchCurriculum = async () => {
-      try {
-        const res = await fetch(
-          `${backendUrl}api/lectures/curriculum/${activeBatch.id}`,
-        );
-        const data = await res.json();
-
-        if (data.length > 0) {
-          setLectureTopics(
-            data.map((unit, index) => ({
-              id: "unit-" + index,
-              name: unit.name,
-              topics: unit.topics,
-            })),
-          );
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchCurriculum();
-  }, [activeBatch]);
+    fetchCurriculum(batchId);
+  }, [activeBatch, batchId]);
 
   useEffect(() => {
     if (!activeBatch) return;
 
-    const fetchPlan = async () => {
-      try {
-        const res = await fetch(
-          `${backendUrl}api/lectures/plan/${activeBatch.id}`,
-        );
-        const data = await res.json();
-
-        if (data.length > 0) {
-          const formattedWeeks = data.map((week) => ({
-            id: Date.now() + Math.random(),
-            topics: week.topics.map((t) => ({
-              id: Date.now() + Math.random(),
-              title: t.title,
-              objectives: t.objectives,
-              classes: t.classes,
-              topicId: t.topicId,
-            })),
-          }));
-
-          setWeeks(formattedWeeks);
-          setHasSavedPlan(true);
-          setIsEditing(false);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchPlan();
-  }, [activeBatch]);
-
-  useEffect(() => {
-    if (lectureTopics.length === 0 && activeBatch) {
-      showAlert(
-        "No Topics",
-        "Please add lecture topics before creating a teaching plan",
-        "danger",
-      );
-    }
-    //eslint-disable-next-line
-  }, [lectureTopics]);
+    fetchPlan(batchId);
+  }, [activeBatch, batchId]);
 
   if (!activeBatch) return;
 
@@ -434,7 +481,11 @@ const Lectures = () => {
 
                                     const selectedTopic = lectureTopics
                                       .flatMap((u) => u.topics)
-                                      .find((t) => t.id === selectedTopicId);
+                                      .find(
+                                        (t) =>
+                                          String(t.id) ===
+                                          String(selectedTopicId),
+                                      );
 
                                     if (!selectedTopic) return;
 
@@ -536,7 +587,13 @@ const Lectures = () => {
                         <i className="fa-solid fa-plus"></i> Add Week
                       </button>
 
-                      <button className="btn btn-primary" onClick={savePlan}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={savePlan}
+                        disabled={weeks.some((w) =>
+                          w.topics.some((t) => !t.topicId),
+                        )}
+                      >
                         <i className="fa-solid fa-save"></i> Save Plan
                       </button>
                     </div>
@@ -555,8 +612,8 @@ const Lectures = () => {
           data={lectureTopics}
           setData={setLectureTopics}
           onCancel={() => setShowEditTopics(false)}
-          onSave={() => {
-            saveCurriculum();
+          onSave={async (updatedTopics) => {
+            await saveCurriculum(updatedTopics);
             setShowEditTopics(false);
           }}
         />

@@ -1,8 +1,25 @@
 const supabase = require("../config/supabaseClient");
 
+const ensureTeacherBatchAccess = async (batchId, teacherId) => {
+  const { data, error } = await supabase
+    .from("batches")
+    .select("id")
+    .eq("id", batchId)
+    .eq("teacher_id", teacherId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+};
+
 // Get attendance stats
 exports.getAttendanceStats = async (req, res) => {
   const { id } = req.params;
+
+  const hasAccess = await ensureTeacherBatchAccess(id, req.user.id);
+  if (!hasAccess) {
+    return res.status(403).json({ error: "Access denied" });
+  }
 
   const { data, error } = await supabase
     .from("batch_attendances")
@@ -61,6 +78,11 @@ exports.getAttendanceStats = async (req, res) => {
 exports.getAttendanceGraph = async (req, res) => {
   const { id } = req.params;
 
+  const hasAccess = await ensureTeacherBatchAccess(id, req.user.id);
+  if (!hasAccess) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
   const { data, error } = await supabase
     .from("batch_attendances")
     .select("attendance_percentage, date")
@@ -85,6 +107,11 @@ exports.getDailyAttendance = async (req, res) => {
   }
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     // 1. Get all students in batch
     const { data: students, error: studentsError } = await supabase
       .from("enrollments")
@@ -143,6 +170,11 @@ exports.getFrequentAbsentees = async (req, res) => {
   const { id } = req.params; // batchId
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const { data, error } = await supabase.rpc("frequent_absentees", {
       batch_id_input: id,
     });

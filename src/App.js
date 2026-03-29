@@ -13,28 +13,38 @@ import Reports from "./app/reports/Reports";
 import Lectures from "./app/lectures/Lectures";
 import Alert from "./components/alert/Alert";
 import Profile from "./app/profile/Profile";
+import Login from "./app/login/Login";
+import Signup from "./app/login/Signup";
 
 function App() {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const defaultUserPath = user?.id ? `/${user.id}` : "/login";
+
   return (
     <Router>
       <Routes>
-        {/* 🔹 Layout wraps EVERYTHING */}
-        <Route element={<Layout />}>
-          {/* Empty state (no batch selected) */}
-          <Route path="/" element={null} />
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
-          {/* Batch routes */}
-          <Route path="/user/:batchId">
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="attendance" element={<Attendance />} />
-            <Route path="students" element={<Students />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="lectures" element={<Lectures />} />
-          </Route>
+        {/* Protected */}
+        <Route
+          path="/"
+          element={<Navigate to={token ? defaultUserPath : "/login"} />}
+        />
+        <Route
+          path="/:userId"
+          element={token ? <Layout /> : <Navigate to="/login" />}
+        >
+          <Route index element={<div>Select a batch</div>} />
+          <Route path=":batchId/dashboard" element={<Dashboard />} />
+          <Route path=":batchId/attendance" element={<Attendance />} />
+          <Route path=":batchId/students" element={<Students />} />
+          <Route path=":batchId/reports" element={<Reports />} />
+          <Route path=":batchId/lectures" element={<Lectures />} />
         </Route>
 
-        {/* PROFILE ROUTE */}
         <Route path="/profile" element={<Profile />} />
       </Routes>
       <Alert />
