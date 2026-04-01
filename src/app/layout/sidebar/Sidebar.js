@@ -3,7 +3,7 @@ import { useState, useEffect, useContext } from "react";
 import AlertContext from "../../../context/alert/AlertContext";
 
 import "./Sidebar.css";
-import BatchModal from "../../../components/batchModal/BatchModal";
+import BatchModal from "../../../components/BatchModal/BatchModal";
 
 const Sidebar = ({ isOpen }) => {
   const backendUrl = "http://localhost:5000/";
