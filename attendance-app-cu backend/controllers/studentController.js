@@ -1,10 +1,27 @@
 const supabase = require("../config/supabaseClient");
 
+const ensureTeacherBatchAccess = async (batchId, teacherId) => {
+  const { data, error } = await supabase
+    .from("batches")
+    .select("id")
+    .eq("id", batchId)
+    .eq("teacher_id", teacherId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+};
+
 // Get student details
 exports.getStudentsByBatch = async (req, res) => {
   const { batchId } = req.params;
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const { data, error } = await supabase
       .from("enrollments")
       .select(
@@ -19,6 +36,7 @@ exports.getStudentsByBatch = async (req, res) => {
             name,
             email,
             department,
+            institution,
             avatar
           )
         )
@@ -35,9 +53,10 @@ exports.getStudentsByBatch = async (req, res) => {
       id: e.students.student_id,
       name: e.students.users?.name,
       email: e.students.users?.email,
-      avatar: e.students.users?.avatar,
-      department: e.students.users?.department,
       roll: e.students.roll_no,
+      department: e.students.users?.department,
+      institution: e.students.users?.institution,
+      avatar: e.students.users?.avatar,
       faceRegistered: e.students.face_registered,
       attendance: e.students.attendance_percentage || 0,
     }));
@@ -51,9 +70,14 @@ exports.getStudentsByBatch = async (req, res) => {
 
 // ADD STUDENT
 exports.addStudent = async (req, res) => {
-  const { name, email, roll, batchId, department } = req.body;
+  const { name, email, roll, batchId, department, institution } = req.body;
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     // 1. Create user
     const { data: user, error: userError } = await supabase
       .from("users")
@@ -62,6 +86,7 @@ exports.addStudent = async (req, res) => {
           name,
           email,
           department,
+          institution,
           role: "student",
           avatar: "https://i.pravatar.cc/150",
         },
@@ -117,14 +142,24 @@ exports.removeStudentFromBatch = async (req, res) => {
   const { id, batchId } = req.params;
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     // Delete enrollment only
-    const { error } = await supabase
+    const { data: deletedEnrollment, error } = await supabase
       .from("enrollments")
       .delete()
+      .select("id")
       .eq("student_id", id)
-      .eq("batch_id", batchId);
+      .eq("batch_id", batchId)
+      .maybeSingle();
 
     if (error) throw error;
+    if (!deletedEnrollment) {
+      return res.status(404).json({ error: "Enrollment not found" });
+    }
 
     // Decrement batch student count
     const { data: batch } = await supabase
@@ -135,7 +170,7 @@ exports.removeStudentFromBatch = async (req, res) => {
 
     await supabase
       .from("batches")
-      .update({ total_students: batch.total_students - 1 })
+      .update({ total_students: Math.max((batch?.total_students || 0) - 1, 0) })
       .eq("id", batchId);
 
     res.json({ message: "Student removed from batch" });
@@ -146,15 +181,19 @@ exports.removeStudentFromBatch = async (req, res) => {
 
 // Delete student completely
 exports.deleteStudent = async (req, res) => {
-  const { studentId } = req.params;
+  const { id } = req.params;
 
   try {
     // Get user_id
     const { data: student } = await supabase
       .from("students")
       .select("user_id")
-      .eq("student_id", studentId)
+      .eq("student_id", id)
       .single();
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
 
     const userId = student.user_id;
 

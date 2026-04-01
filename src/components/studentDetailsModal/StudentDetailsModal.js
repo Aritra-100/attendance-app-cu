@@ -33,6 +33,9 @@ const StudentDetailsModal = ({ isOpen, student, onClose }) => {
             <strong>Department:</strong> {student.department}
           </p>
           <p>
+            <strong>Institution:</strong> {student.institution}
+          </p>
+          <p>
             <strong>Face Registered:</strong>{" "}
             {student.faceRegistered ? "Yes" : "No"}
           </p>
@@ -45,7 +48,7 @@ const StudentDetailsModal = ({ isOpen, student, onClose }) => {
         </div>
       </div>
     </div>,
-    modalRoot
+    modalRoot,
   );
 };
 

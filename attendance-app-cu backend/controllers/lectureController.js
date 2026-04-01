@@ -1,5 +1,17 @@
 const supabase = require("../config/supabaseClient");
 
+const ensureTeacherBatchAccess = async (batchId, teacherId) => {
+  const { data, error } = await supabase
+    .from("batches")
+    .select("id")
+    .eq("id", batchId)
+    .eq("teacher_id", teacherId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+};
+
 // SAVE CURRICULUM (Units + Topics)
 exports.saveCurriculum = async (req, res) => {
   const { batchId } = req.params;
@@ -7,6 +19,11 @@ exports.saveCurriculum = async (req, res) => {
   // units = [{ name: "Unit 1", topics: [{ id?, name }] }]
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     if (!units || units.length === 0) {
       // delete all topics for this batch
       const { data: curriculum } = await supabase
@@ -111,6 +128,11 @@ exports.getCurriculum = async (req, res) => {
   const { batchId } = req.params;
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const { data, error } = await supabase
       .from("lecture_curriculum")
       .select(
@@ -126,7 +148,12 @@ exports.getCurriculum = async (req, res) => {
       .eq("batch_id", batchId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === "PGRST116") {
+        return res.json([]);
+      }
+      throw error;
+    }
 
     // Convert to frontend format
     const unitsMap = {};
@@ -149,7 +176,7 @@ exports.getCurriculum = async (req, res) => {
     res.json(formatted);
   } catch (err) {
     console.log(err);
-    res.json([]);
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -159,36 +186,61 @@ exports.savePlan = async (req, res) => {
   const { weeks } = req.body;
 
   try {
-    // 1. Delete old plan
-    await supabase.from("lecture_schedule").delete().eq("batch_id", batchId);
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
 
-    // 2. Semester start date (CHANGE THIS if needed)
-    const semesterStart = new Date("2025-01-05");
+    if (!Array.isArray(weeks) || weeks.length === 0) {
+      return res.status(400).json({ error: "Weeks are required" });
+    }
 
-    // 3. Insert new plan
+    // 1. Build new rows
     const rows = [];
 
     weeks.forEach((week, index) => {
-      const plannedDate = new Date(semesterStart);
-      plannedDate.setDate(semesterStart.getDate() + index * 7);
-
       week.topics.forEach((topic) => {
+        if (!topic.topicId) return;
         rows.push({
           batch_id: batchId,
           topic_id: topic.topicId,
           week_no: index + 1,
-          planned_date: plannedDate.toISOString().split("T")[0],
           objectives: topic.objectives,
           classes: topic.classes,
         });
       });
     });
 
-    const { error } = await supabase.from("lecture_schedule").insert(rows);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "At least one topic is required" });
+    }
 
-    if (error) throw error;
+    // 2. Backup old plan
+    const { data: existingRows, error: existingError } = await supabase
+      .from("lecture_schedule")
+      .select("batch_id, topic_id, week_no, objectives, classes")
+      .eq("batch_id", batchId);
 
-    res.json({ message: "Plan saved with dates" });
+    if (existingError) throw existingError;
+
+    // 3. Replace old plan. If insert fails, restore previous rows.
+    const { error: deleteError } = await supabase
+      .from("lecture_schedule")
+      .delete()
+      .eq("batch_id", batchId);
+
+    if (deleteError) throw deleteError;
+
+    const { error: insertError } = await supabase.from("lecture_schedule").insert(rows);
+
+    if (insertError) {
+      if (existingRows?.length) {
+        await supabase.from("lecture_schedule").insert(existingRows);
+      }
+      throw insertError;
+    }
+
+    res.json({ message: "Plan saved successfully" });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: err.message });
@@ -200,6 +252,11 @@ exports.getPlan = async (req, res) => {
   const { batchId } = req.params;
 
   try {
+    const hasAccess = await ensureTeacherBatchAccess(batchId, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const { data, error } = await supabase
       .from("lecture_schedule")
       .select(
@@ -242,6 +299,6 @@ exports.getPlan = async (req, res) => {
     res.json(formatted);
   } catch (err) {
     console.log(err);
-    res.json([]);
+    res.status(500).json({ error: err.message });
   }
 };

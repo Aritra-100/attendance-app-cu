@@ -8,7 +8,7 @@ import "./Dashboard.css";
 const Dashboard = () => {
   const backendUrl = "http://localhost:5000/";
   const { showAlert } = useContext(AlertContext);
-  const { activeBatch } = useContext(BatchContext);
+  const { activeBatch, fetchBatchById } = useContext(BatchContext);
   const { batchId } = useParams();
 
   // Average attendance
@@ -44,9 +44,13 @@ const Dashboard = () => {
   // Save new threshold
   const saveThreshold = async () => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`${backendUrl}api/batches/${batchId}/threshold`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ threshold }),
       });
 
@@ -55,6 +59,7 @@ const Dashboard = () => {
       if (!res.ok) throw new Error(data.error);
 
       setSavedThreshold(threshold);
+      await fetchBatchById(batchId);
       showAlert("Saved", "Threshold updated", "success");
     } catch (err) {
       showAlert("Error", err.message, "danger");
@@ -64,7 +69,12 @@ const Dashboard = () => {
   // Fetch Average Attendance
   const fetchAverageAttendance = async (id) => {
     try {
-      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/attendance/${id}/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
 
       if (!res.ok) {

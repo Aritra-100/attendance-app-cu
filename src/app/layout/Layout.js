@@ -7,13 +7,16 @@ import BatchContext from "../../context/batch/BatchContext";
 import "./Layout.css";
 
 const Layout = () => {
-  const { batchId } = useParams();
+  const { userId, batchId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { fetchBatchById } = useContext(BatchContext);
+  const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 
   useEffect(() => {
     if (batchId) {
       fetchBatchById(batchId);
+    } else {
+      fetchBatchById(null);
     }
     //eslint-disable-next-line
   }, [batchId]);
@@ -39,7 +42,10 @@ const Layout = () => {
           {!batchId ? (
             <div className="empty-state">
               <h2>Select a batch</h2>
-              <p>Please choose a batch from the sidebar to continue.</p>
+              <p>
+                Please choose a batch from the sidebar to continue,{" "}
+                {storedUser?.name || "User"}.
+              </p>
             </div>
           ) : (
             <Outlet />

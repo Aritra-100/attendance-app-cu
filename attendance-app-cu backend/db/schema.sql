@@ -4,7 +4,9 @@ create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   email text not null unique,
+  password text,
   department text,
+  institution text,
   role text not null default 'student',
   avatar text,
   created_at timestamptz not null default now()
@@ -12,6 +14,7 @@ create table if not exists users (
 
 create table if not exists batches (
   id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null references users(id) on delete cascade,
   name text not null,
   batch_code text not null unique,
   threshold integer not null default 75 check (threshold >= 0 and threshold <= 100),

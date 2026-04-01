@@ -1,10 +1,12 @@
 import { useContext, useState, useMemo, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import BatchContext from "../../context/batch/BatchContext";
 import "./Reports.css";
 
 const Reports = () => {
   const backendUrl = "http://localhost:5000/";
   const { activeBatch } = useContext(BatchContext);
+  const { batchId } = useParams();
 
   const [weeklyAttendance, setWeeklyAttendance] = useState([]);
 
@@ -19,8 +21,14 @@ const Reports = () => {
 
   const fetchFrequentAbsentees = async () => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(
-        `${backendUrl}api/attendance/${activeBatch.id}/frequent-absentees`,
+        `${backendUrl}api/attendance/${batchId}/frequent-absentees`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
       const data = await res.json();
 
@@ -67,9 +75,12 @@ const Reports = () => {
   // Fetch graph data
   const fetchGraph = async () => {
     try {
-      const res = await fetch(
-        `${backendUrl}api/attendance/${activeBatch.id}/graph`,
-      );
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/attendance/${batchId}/graph`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
 
       const { start, end } = getWeekRange();
@@ -232,7 +243,7 @@ const Reports = () => {
               ) : (
                 <div className="absence-list">
                   {frequentAbsentees.map((s, index) => (
-                    <div key={s.id} className="absence-row">
+                    <div key={s.id || index} className="absence-row">
                       <span className="rank">#{index + 1}</span>
                       <span className="name">{s.name}</span>
                       <span className="count">{s.absences} absences</span>

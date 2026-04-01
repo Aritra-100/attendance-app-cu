@@ -54,8 +54,8 @@ const LectureTopicsModal = ({ data, setData, onCancel, onSave }) => {
   };
 
   const handleSave = () => {
-    setData(localData); // send updated data to parent
-    onSave(); // save to backend
+    setData(localData); // keep parent UI in sync
+    onSave(localData); // save the latest edited data to backend
   };
 
   return (

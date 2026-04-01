@@ -1,18 +1,20 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
 import AlertContext from "../../../context/alert/AlertContext";
+import BatchContext from "../../../context/batch/BatchContext";
 
 import "./Sidebar.css";
 import BatchModal from "../../../components/BatchModal/BatchModal";
 
 const Sidebar = ({ isOpen }) => {
   const backendUrl = "http://localhost:5000/";
-  const { batchId } = useParams();
+  const { userId, batchId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Alert
   const { showAlert } = useContext(AlertContext);
+  const { setActiveBatch } = useContext(BatchContext);
 
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -39,9 +41,13 @@ const Sidebar = ({ isOpen }) => {
   // Add batch
   const handleAddBatch = async (name) => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`${backendUrl}api/batches`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ name }),
       });
 
@@ -65,9 +71,11 @@ const Sidebar = ({ isOpen }) => {
   // Rename batch
   const handleRenameBatch = async (name, id) => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`${backendUrl}api/batches/${id}`, {
         method: "PATCH",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name }),
@@ -95,9 +103,19 @@ const Sidebar = ({ isOpen }) => {
   // Delete batch
   const handleDeleteBatch = async (id) => {
     try {
-      await fetch(`${backendUrl}api/batches/${id}`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/batches/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error?.message || data?.error || "Delete failed");
+      }
 
       setIsModalOpen(false);
 
@@ -106,19 +124,42 @@ const Sidebar = ({ isOpen }) => {
 
       // if deleted batch is active → go home
       if (id === batchId) {
-        navigate("/");
+        setActiveBatch(null);
+        navigate(`/${userId}`);
       }
 
       showAlert("Deleted", "Batch deleted successfully", "danger");
     } catch (error) {
       console.error(error);
+      showAlert("Error", error.message, "danger");
     }
   };
 
   const fetchBatches = async () => {
     try {
-      const res = await fetch(`${backendUrl}api/batches`);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}api/batches`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       const data = await res.json();
+
+      // If unauthorized → redirect to login
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+        return;
+      }
+
+      // Ensure array
+      if (!Array.isArray(data)) {
+        console.error("Expected array but got:", data);
+        return;
+      }
+
       setBatches(data);
     } catch (err) {
       console.error("Error fetching batches:", err);
@@ -148,8 +189,8 @@ const Sidebar = ({ isOpen }) => {
                 className="batch-name"
                 onClick={() => {
                   const parts = location.pathname.split("/");
-                  const currentPage = parts[3] || "dashboard";
-                  navigate(`/user/${batch.id}/${currentPage}`);
+                  const currentPage = parts[4] || "dashboard";
+                  navigate(`/${userId}/${batch.id}/${currentPage}`);
                 }}
               >
                 {batch.name}
